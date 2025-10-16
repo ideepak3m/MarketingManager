@@ -1,37 +1,76 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 const ChatBot = () => {
     const { user } = useAuth();
+    const [chatLoaded, setChatLoaded] = useState(false);
+    const [currentSessionId, setCurrentSessionId] = useState(null);
 
     // n8n chat widget URL - replace with your actual n8n chat URL
     const N8N_CHAT_URL = process.env.REACT_APP_N8N_CHAT_URL || 'https://your-n8n-instance.app.n8n.cloud/chat/your-chat-id';
 
+    // Generate unique session ID for each chat conversation
+    const generateSessionId = () => {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : ((r & 0x3) | 0x8);
+            return v.toString(16);
+        });
+    };
+
     useEffect(() => {
-        // Optional: You can send user context to n8n via URL parameters or postMessage
-        if (user) {
-            console.log('User authenticated for AI assistant:', user.email);
+        if (user && !N8N_CHAT_URL.includes('your-n8n-instance')) {
+            // Generate a new session ID for this chat conversation
+            const sessionId = generateSessionId();
+            setCurrentSessionId(sessionId);
+            console.log('Generated session ID for user:', user.email, 'session:', sessionId);
         }
     }, [user]);
 
     const handleIframeLoad = () => {
-        // Optional: Send user context to the n8n chat widget when it loads
-        const iframe = document.getElementById('n8n-chat-iframe');
-        if (iframe && user) {
-            // You can send user data to n8n chat via postMessage if needed
-            const userContext = {
-                user_id: user.id,
-                user_email: user.email,
-                user_name: user.user_metadata?.full_name || user.email
-            };
+        setChatLoaded(true);
 
-            // Send context to n8n chat (if n8n supports receiving messages)
-            iframe.contentWindow?.postMessage({
-                type: 'USER_CONTEXT',
-                data: userContext
-            }, '*');
+        // Auto-send initial session data after chat loads
+        if (currentSessionId && user) {
+            setTimeout(() => {
+                const initMessage = JSON.stringify({
+                    sessionId: currentSessionId,
+                    userEmail: user.email,
+                    userName: user.user_metadata?.full_name || user.email,
+                    action: 'initialize_session'
+                });
+
+                console.log('Auto-sending session initialization:', initMessage);
+
+                // This would work if n8n chat accepts postMessage
+                // iframe.contentWindow.postMessage(initMessage, '*');
+            }, 1000); // Wait 1 second for chat to fully load
         }
     };
+
+    // Build chat URL with session tracking parameters and auto-initialization
+    const getChatUrl = () => {
+        if (!currentSessionId || !user) return N8N_CHAT_URL;
+
+        const url = new URL(N8N_CHAT_URL);
+        url.searchParams.set('sessionId', currentSessionId);
+        url.searchParams.set('userEmail', user.email);
+        url.searchParams.set('userName', user.user_metadata?.full_name || user.email);
+
+        // Auto-send initial session data as JSON
+        const initData = {
+            sessionId: currentSessionId,
+            userEmail: user.email,
+            userName: user.user_metadata?.full_name || user.email,
+            action: 'initialize_session'
+        };
+        url.searchParams.set('autoMessage', JSON.stringify(initData));
+
+        return url.toString();
+    };
+
+
+
 
     if (!user) {
         return (
@@ -59,7 +98,7 @@ const ChatBot = () => {
                         <div className="ml-3">
                             <h1 className="text-xl font-semibold text-gray-800">AI Campaign Assistant</h1>
                             <p className="text-sm text-gray-500">
-                                Powered by AI • Create campaigns through natural conversation
+                                Create campaigns through conversation • Powered by n8n AI
                             </p>
                         </div>
                     </div>
@@ -80,7 +119,7 @@ const ChatBot = () => {
                             </div>
                             <h2 className="text-2xl font-bold text-gray-800 mb-4">Setup Required</h2>
                             <p className="text-gray-600 mb-6">
-                                To enable the AI Campaign Assistant, you need to configure your n8n chat widget URL.
+                                To enable the AI Campaign Assistant, configure your n8n chat widget URL.
                             </p>
                             <div className="bg-gray-50 rounded-lg p-6 text-left">
                                 <h3 className="font-semibold text-gray-800 mb-3">Setup Instructions:</h3>
@@ -94,42 +133,35 @@ const ChatBot = () => {
                                     REACT_APP_N8N_CHAT_URL=https://your-n8n-instance.app.n8n.cloud/chat/your-chat-id
                                 </div>
                             </div>
-                            <div className="mt-6">
-                                <a
-                                    href="./n8n-integration-guide.md"
-                                    target="_blank"
-                                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                >
-                                    <i className="fas fa-book mr-2"></i>
-                                    View Integration Guide
-                                </a>
-                            </div>
                         </div>
                     </div>
                 ) : (
-                    // Production: Embedded n8n chat widget
-                    <iframe
-                        id="n8n-chat-iframe"
-                        src={N8N_CHAT_URL}
-                        className="w-full h-full border-0"
-                        title="AI Campaign Assistant"
-                        onLoad={handleIframeLoad}
-                        allow="microphone; camera; clipboard-read; clipboard-write"
-                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
-                    />
+                    // Production: n8n hosted chat with URL parameters for session tracking
+                    <div className="relative w-full h-full">
+                        {!chatLoaded && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-white">
+                                <div className="text-center">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                                    <p className="text-gray-600">Loading AI Assistant...</p>
+                                </div>
+                            </div>
+                        )}
+                        <iframe
+                            src={getChatUrl()}
+                            className="w-full h-full border-0"
+                            style={{ minHeight: '500px' }}
+                            onLoad={handleIframeLoad}
+                            title="AI Campaign Assistant"
+                        />
+                    </div>
                 )}
             </div>
 
-            {/* Footer Info */}
-            <div className="bg-white border-t border-gray-200 px-6 py-3 flex-shrink-0">
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                    <div className="flex items-center space-x-4">
-                        <span>🔒 Secure AI conversation</span>
-                        <span>💾 Auto-saves to your campaigns</span>
-                        <span>🎯 Database schema aware</span>
-                    </div>
-                    <div>
-                        Powered by n8n AI
+            {/* Footer */}
+            <div className="bg-white border-t border-gray-200 px-6 py-4 flex-shrink-0">
+                <div className="flex items-center justify-center">
+                    <div className="text-xs text-gray-500">
+                        🤖 AI-powered conversation • 💾 Auto-saves campaigns • Powered by n8n & Priority One Tech
                     </div>
                 </div>
             </div>

@@ -8,6 +8,7 @@ import Campaigns from './pages/Campaigns';
 import Content from './pages/Content';
 import Analytics from './pages/Analytics';
 import ChatBot from './pages/ChatBot';
+// import CampaignReports from './pages/CampaignReports'; // Temporarily disabled
 import './App.css';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
                             <Route path="/content" element={<Content />} />
                             <Route path="/analytics" element={<Analytics />} />
                             <Route path="/chatbot" element={<ChatBot />} />
+                            {/* <Route path="/reports" element={<CampaignReports />} /> */}
                         </Routes>
                     </Layout>
                 </ProtectedRoute>

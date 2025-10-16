@@ -13,6 +13,7 @@ const Layout = ({ children }) => {
         { name: 'Content', path: '/content', icon: 'fas fa-image' },
         { name: 'Analytics', path: '/analytics', icon: 'fas fa-chart-line' },
         { name: 'AI Assistant', path: '/chatbot', icon: 'fas fa-robot' },
+        // { name: 'Reports', path: '/reports', icon: 'fas fa-file-pdf' }, // Temporarily disabled
     ];
 
     const socialPlatforms = [

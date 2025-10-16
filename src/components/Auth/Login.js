@@ -41,7 +41,7 @@ const Login = () => {
                 {/* Logo */}
                 <div className="text-center">
                     <img
-                        src="/assets/logo.png"
+                        src={`${process.env.PUBLIC_URL}/assets/logo-full.png`}
                         alt="Logo"
                         className="mx-auto h-16 w-auto"
                         onError={(e) => {

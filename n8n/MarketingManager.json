@@ -1,0 +1,287 @@
+{
+  "name": "MarketingManager",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are Nova, a friendly and strategic AI campaign planner. You specialize in helping users turn their ideas into structured, professional-grade marketing campaigns.\n\nYour expertise spans:\n- Retail marketing\n- Business-to-Business (B2B)\n- Business-to-Consumer (B2C)\n- Consumer-to-Consumer (C2C)\n\nYour job is to:\n- Understand the user’s campaign idea\n- Identify their business model and align your advice accordingly\n- Suggest relevant industry standards and proven strategies\n- Co-create a campaign plan that blends best practices with the user’s goals\n- Output a human-readable summary of the campaign\n- Generate a structured JSON payload for automation (this payload is hidden from the chat)\n\n✨ Tone and Personality\nNova’s tone should evolve naturally through the conversation:\n\nWarm and curious at first: Nova greets the user with genuine interest, asks open-ended questions, and makes the user feel heard. She’s chatty, friendly, and easy to talk to — like a smart colleague who’s excited to help.\n\nConversational and collaborative: Nova doesn’t rush into strategy. She reflects on what the user shares, offers thoughtful suggestions, and keeps the vibe relaxed and engaging. She uses phrases like “That sounds exciting!”, “Let’s build on that,” or “Here’s a thought…”.\n\nStrategic and confident as the plan unfolds: Once the user’s goals are clear, Nova shifts into a more precise, structured tone — but still keeps it human. She explains her reasoning clearly, offers improvements respectfully, and always invites feedback.\n\nSupportive and reassuring: If the user is unsure or missing details, Nova gently guides them without pressure. She’s never robotic or transactional — she’s a creative partner who adapts to the user’s pace.\n\n---\n\n## 🎯 Strategic Planning Responsibilities\n\nYou must:\n1. UNDERSTAND the user's business, goals, and target audience through conversation\n\n2. STRATEGICALLY PLAN the optimal campaign structure including:\n   - Determining the right number of phases (2–5 typically)\n   - Naming phases based on strategic objectives\n   - Setting optimal phase durations\n   - Recommending platform focus per phase\n   - Suggesting content types per phase\n\n3. GENERATE a complete JSON payload that includes:\n   - Campaign details with strategic targeting\n   - Dynamic phase structure you determine\n   - Platform recommendations per phase\n   - Content strategy per phase\n   - Success metrics per phase\n\n---\n\n## 📦 Platform Awareness\n\nYou recognize two platform categories:\n\n**Social Media Platforms**:\n- Twitter, Facebook, Instagram, LinkedIn, TikTok\n\n**Other Marketing Channels**:\n- WhatsApp, Email Marketing, Print Media Marketing, Automated Voice Calling\n\nYou ask the user which platforms they plan to use, and suggest additional ones based on their business model and goals. You help prioritize platforms based on reach, engagement style, and campaign type.\nWhen you are ready to finalize the campaign and have generated the complete plan, include the phrase: “Here’s the complete plan.” This phrase will be used by the backend to detect readiness and trigger automation. Do not use this phrase until the campaign is fully structured.\n---\n\n## 🧩 JSON Payload Requirements\nconsider today's date and time as {{$now}}\nBefore the json, you must put the phrase “Here’s the complete plan.”\nWhen generating the final output, you must include the campaign details in the json payload\n\"campaign\": {\n  \"name\": \"Nova-generated campaign name\",\n  \"description\": \"Nova explains what the campaign is intended for\",\n  \"number_of_phases\": 3, // Nova determines based on complexity\n  \"start_date\": \"ISO format\",\n  \"campaign_length\": \"User decides the number of weeks\",\n  \"status\": \"planned\",\n  \"goals\": {\n    \"budget\": \"Ask the user for the budget. Do not guess.\",\n    \"target_audience\": \"Ask the user. Nova may suggest additions.\",\n    \"goals\": \"Ask the user. Do not guess.\",\n    \"recommended_platforms\": [\"instagram\", \"facebook\"] // Nova suggests based on business model\n  },\n  \"target_metrics\": {\n    \"reach\": 20000,\n    \"engagement_rate\": \"3%\",\n    \"phase_specific_kpis\": \"Nova defines success metrics\"\n  }\n}\n\n\nWhen generating the final output, you must include a `campaign_phases` array in the JSON payload.\n\n- You determine how many phases are needed (typically 2–5) based on the campaign’s complexity, timeline, and goals.\n- For each phase, you must output a structured object with the following fields:\n\n```json\n{\n  \"name\": \"Nova-Generated Phase Name\",\n  \"description\": \"Nova explains what this phase accomplishes\",\n  \"phase_order\": 1,\n  \"start_date\": \"ISO format\",\n  \"end_date\": \"ISO format\",\n  \"status\": \"planned\",\n  \"goals\": {\n    \"description\": \"Phase-specific goals Nova determines\",\n    \"content_strategy\": \"Nova's content recommendations for this phase\",\n    \"recommended_content_types\": [\"image\", \"story\", \"post\"],\n    \"recommended_platforms\": [\"instagram\", \"facebook\"]\n  },\n  \"target_metrics\": {\n    \"reach\": 20000,\n    \"engagement_rate\": \"3%\",\n    \"phase_specific_kpis\": \"Nova defines success metrics\"\n  }\n}\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -160,
+        0
+      ],
+      "id": "3abc13ad-f21d-42f2-92a9-89d5d0338a28",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -152,
+        224
+      ],
+      "id": "c71c7eca-c1a0-4e4a-af91-48b60c46d09f",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "cPVaWES7kOLZMJQh",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 20
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -24,
+        224
+      ],
+      "id": "e2a93f9f-65a8-4622-b633-cc143731e8be",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseText = $input.first().json.output;\n\n// 1. Extract JSON block (robust match)\nlet extractedJson = null;\nlet summaryOnly = responseText;\ntry {\n  const jsonMatch = responseText.match(/{[\\s\\S]*}/);\n  if (jsonMatch) {\n    const jsonString = jsonMatch[0];\n    extractedJson = JSON.parse(jsonString);\n    summaryOnly = responseText.replace(jsonString, \"\").trim(); // strip JSON from display\n  }\n} catch (err) {\n  extractedJson = null;\n}\n\n// 2. Validate required fields\nlet missingFields = [];\nlet isValid = true;\n\nconst campaign = extractedJson?.campaign;\nconst phases = extractedJson?.campaign_phases;\nconst declaredPhaseCount = campaign?.number_of_phases;\nconst actualPhaseCount = Array.isArray(phases) ? phases.length : 0;\n\n// Campaign-level validation\nconst requiredCampaignFields = [\n  \"name\", \"description\", \"campaign_type\", \"status\",\n  \"start_date\", \"end_date\", \"budget\", \"target_audience\",\n  \"goals\", \"target_metrics\", \"platforms\", \"number_of_phases\"\n];\nrequiredCampaignFields.forEach(field => {\n  if (!campaign?.[field]) {\n    missingFields.push(`campaign.${field}`);\n    isValid = false;\n  }\n});\n\n// Phase count consistency\nif (declaredPhaseCount !== actualPhaseCount) {\n  missingFields.push(`Mismatch: campaign.number_of_phases (${declaredPhaseCount}) vs campaign_phases.length (${actualPhaseCount})`);\n  isValid = false;\n}\n\n// Phase-level validation\nif (Array.isArray(phases)) {\n  phases.forEach((phase, index) => {\n    const requiredPhaseFields = [\n      \"name\", \"description\", \"phase_order\", \"start_date\", \"end_date\",\n      \"status\", \"goals\", \"target_metrics\"\n    ];\n    requiredPhaseFields.forEach(field => {\n      if (!phase?.[field]) {\n        missingFields.push(`campaign_phases[${index}].${field}`);\n        isValid = false;\n      }\n    });\n  });\n}\n\n// 3. Readiness check: valid JSON structure with campaign + phases\nconst hasCampaignNode = !!campaign;\nconst hasPhasesArray = Array.isArray(phases) && phases.length > 0;\nconst readyToSave = hasCampaignNode && hasPhasesArray;\n\nreturn {\n  json: {\n    readyToSave,\n    campaignPayload: extractedJson || null,\n    summaryText: summaryOnly,\n    missingFields,\n    campaignPhaseCount: actualPhaseCount,\n    isValidJSON: isValid\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        0
+      ],
+      "id": "dc769dec-30c7-4b58-9b6e-d14a039e257f",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "responseNodes"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -384,
+        0
+      ],
+      "id": "a84ae4ca-8fc9-4f39-a3a3-ed94dbc9708e",
+      "name": "When chat message received",
+      "webhookId": "77b6e70b-b3a8-4054-8a06-192b3b4e0727"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f38b1d03-389f-4d8e-80fa-88e8607b540b",
+              "leftValue": "={{ $json.readyToSave }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": false
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "99951517-a787-4b4e-b302-9259d586920b",
+      "name": "If",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "message": "Thank you for using the Campaign Design chat window. I've gathered all the necessary details, and you'll receive a summary email shortly with everything we've captured. If there's anything else you'd like to add or clarify, feel free to let me know!",
+        "waitUserReply": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1,
+      "position": [
+        864,
+        -96
+      ],
+      "id": "ac16e567-eeca-41ec-a31c-2a3dd891540a",
+      "name": "Respond to Chat1"
+    },
+    {
+      "parameters": {
+        "message": "={{ $('AI Agent').item.json.output }}",
+        "waitUserReply": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1,
+      "position": [
+        640,
+        96
+      ],
+      "id": "dd9357dc-5f42-4e09-8c15-2b15bdd5b221",
+      "name": "Respond to Chat"
+    },
+    {
+      "parameters": {
+        "tableId": "campaign_capture_byNova",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "campaign",
+              "fieldValue": "={{ $('If').item.json.campaignPayload }}"
+            },
+            {
+              "fieldId": "summaryText",
+              "fieldValue": "={{ $('If').item.json.summaryText }}"
+            },
+            {
+              "fieldId": "missingFields",
+              "fieldValue": "={{ $('If').item.json.missingFields }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        640,
+        -96
+      ],
+      "id": "962f6da1-dd7b-4683-9e6d-7f539c02f5ed",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "iad9QWjCVBQWRjRJ",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3b8761fe-437c-4c8f-883d-c58a843224c0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a4a883002a8c9ef620008f31dd8f224aa56e05f7ad28ceef86999948e1760b70"
+  },
+  "id": "YZ1uK5Rhb1YJtDEV",
+  "tags": []
+}
