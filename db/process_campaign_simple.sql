@@ -15,8 +15,8 @@ DECLARE
 BEGIN
     -- Find the most recent raw campaign data for this email
     SELECT * INTO raw_record
-    FROM campaign_capture_byNova 
-    WHERE userEmail = input_email 
+    FROM "campaign_capture_byNova" 
+    WHERE "userEmail" = input_email 
     AND campaign IS NOT NULL
     ORDER BY created_at DESC 
     LIMIT 1;
@@ -62,15 +62,14 @@ BEGIN
         platforms,
         number_of_phases,
         campaign_length,
-        summary_text,
         created_by_ai,
         ai_model_version
     ) VALUES (
         new_campaign_id,
-        NULL, -- We'll need to map userEmail to user_id separately
+        input_email, -- Use email as user_id for tracking
         COALESCE(campaign_json->'campaign'->>'name', 'Untitled Campaign'),
         campaign_json->'campaign'->>'description',
-        COALESCE(campaign_json->'campaign'->>'type', 'general'),
+        'marketing',  -- Default type since it's missing from JSON
         'draft',
         CASE 
             WHEN campaign_json->'campaign'->>'start_date' IS NOT NULL 
@@ -82,18 +81,17 @@ BEGIN
             THEN (campaign_json->'campaign'->>'end_date')::timestamp with time zone
             ELSE NULL
         END,
-        COALESCE((campaign_json->'campaign'->>'budget')::numeric, 0),
-        campaign_json->'campaign'->'target_audience',
+        COALESCE((campaign_json->'campaign'->'goals'->>'budget')::numeric, 0),  -- budget is nested in goals
+        jsonb_build_object('target_audience', campaign_json->'campaign'->'goals'->>'target_audience'),  -- nested in goals
         campaign_json->'campaign'->'goals',
         campaign_json->'campaign'->'target_metrics',
         CASE 
-            WHEN campaign_json->'campaign'->'platforms' IS NOT NULL 
-            THEN ARRAY(SELECT jsonb_array_elements_text(campaign_json->'campaign'->'platforms'))
+            WHEN campaign_json->'campaign'->'goals'->'recommended_platforms' IS NOT NULL 
+            THEN ARRAY(SELECT jsonb_array_elements_text(campaign_json->'campaign'->'goals'->'recommended_platforms'))
             ELSE '{}'::text[]
         END,
         COALESCE(jsonb_array_length(campaign_phases_json), 0),
         campaign_json->'campaign'->>'duration',
-        raw_record.summaryText,
         true,
         'Nova-1.0'
     );
@@ -119,7 +117,7 @@ BEGIN
             ) VALUES (
                 gen_random_uuid(),
                 new_campaign_id,
-                NULL, -- We'll need to map userEmail to user_id separately
+                input_email, -- Use email as user_id for tracking
                 (campaign_phases_json->i->>'name'),
                 (campaign_phases_json->i->>'description'),
                 i + 1,
@@ -161,7 +159,7 @@ BEGIN
         'campaign_name', new_campaign_record.name,
         'phases_created', new_campaign_record.number_of_phases,
         'raw_data_id', raw_record.id,
-        'session_id', raw_record.sessionId
+        'session_id', raw_record."sessionId"
     );
     
     RETURN result;

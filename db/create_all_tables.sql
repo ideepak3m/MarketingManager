@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.campaign_capture_byNova (
 -- Table: campaigns (Structured campaign information)
 CREATE TABLE IF NOT EXISTS public.campaigns (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
-    user_id uuid,
+    user_id text,
     name text NOT NULL,
     description text,
     campaign_type text NOT NULL,
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS public.campaigns (
 CREATE TABLE IF NOT EXISTS public.campaign_phases (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
     campaign_id uuid,
-    user_id uuid,
+    user_id text,
     name text NOT NULL,
     description text,
     phase_order integer NOT NULL,
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS public.campaign_phases (
 CREATE TABLE IF NOT EXISTS public.campaign_reports (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
     campaign_id uuid,
-    user_id uuid,
+    user_id text,
     report_type text DEFAULT 'campaign_plan'::text,
     report_title text NOT NULL,
     summary_text text NOT NULL,
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 CREATE TABLE IF NOT EXISTS public.content (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
     campaign_id uuid,
-    user_id uuid,
+    user_id text,
     title text NOT NULL,
     content_type text NOT NULL,
     content_text text,
@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS public.posts (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
     content_id uuid,
     campaign_id uuid,
-    user_id uuid,
+    user_id text,
     platform text NOT NULL,
     post_text text,
     media_urls text[],
