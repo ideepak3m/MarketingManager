@@ -79,6 +79,22 @@ BEGIN
         CASE 
             WHEN campaign_json->'campaign'->>'end_date' IS NOT NULL 
             THEN (campaign_json->'campaign'->>'end_date')::timestamp with time zone
+            WHEN campaign_json->'campaign'->>'campaign_length' IS NOT NULL 
+            THEN 
+                CASE 
+                    WHEN campaign_json->'campaign'->>'start_date' IS NOT NULL 
+                    THEN (campaign_json->'campaign'->>'start_date')::timestamp with time zone + 
+                         CASE 
+                            WHEN campaign_json->'campaign'->>'campaign_length' LIKE '% week%' 
+                            THEN (regexp_replace(campaign_json->'campaign'->>'campaign_length', '[^0-9]', '', 'g')::integer || ' weeks')::interval
+                            WHEN campaign_json->'campaign'->>'campaign_length' LIKE '% month%' 
+                            THEN (regexp_replace(campaign_json->'campaign'->>'campaign_length', '[^0-9]', '', 'g')::integer || ' months')::interval
+                            WHEN campaign_json->'campaign'->>'campaign_length' LIKE '% day%' 
+                            THEN (regexp_replace(campaign_json->'campaign'->>'campaign_length', '[^0-9]', '', 'g')::integer || ' days')::interval
+                            ELSE '8 weeks'::interval
+                         END
+                    ELSE NOW() + '8 weeks'::interval
+                END
             ELSE NULL
         END,
         COALESCE((campaign_json->'campaign'->'goals'->>'budget')::numeric, 0),  -- budget is nested in goals
@@ -91,7 +107,7 @@ BEGIN
             ELSE '{}'::text[]
         END,
         COALESCE(jsonb_array_length(campaign_phases_json), 0),
-        campaign_json->'campaign'->>'duration',
+        COALESCE(campaign_json->'campaign'->>'campaign_length', campaign_json->'campaign'->>'duration', '8 weeks'),
         true,
         'Nova-1.0'
     );

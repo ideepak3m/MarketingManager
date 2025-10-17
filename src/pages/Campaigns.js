@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../services/supabase';
+import CampaignReportGenerator from '../services/CampaignReportGenerator';
 
 const Campaigns = () => {
     const { user } = useAuth();
     const [campaigns, setCampaigns] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [selectedCampaign, setSelectedCampaign] = useState(null);
 
     // Fetch campaigns when component mounts
     useEffect(() => {
@@ -47,7 +49,11 @@ const Campaigns = () => {
                     created_at,
                     created_by_ai,
                     ai_model_version,
-                    user_id
+                    user_id,
+                    campaign_length,
+                    goals,
+                    target_audience,
+                    platforms
                 `)
                 .eq('created_by_ai', true)
                 .eq('user_id', user?.email)
@@ -69,15 +75,300 @@ const Campaigns = () => {
         }
     };
 
+    const generatePDF = async (campaign) => {
+        try {
+            const reportGenerator = new CampaignReportGenerator();
+            const result = await reportGenerator.generateCampaignReport(campaign);
+
+            if (result.success) {
+                // Success message is shown by the generator itself
+                console.log(`✅ ${result.message}`);
+            } else {
+                alert(`❌ Report Generation Failed: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Report Generation Error:', error);
+            alert(`❌ Error: ${error.message}`);
+        }
+    };
+
+    const getCurrentPhase = (campaign, phaseNumber) => {
+        const now = new Date();
+        const startDate = campaign.start_date ? new Date(campaign.start_date) : null;
+        const endDate = campaign.end_date ? new Date(campaign.end_date) : null;
+
+        if (!startDate || !endDate) return 'upcoming';
+
+        const totalDuration = endDate.getTime() - startDate.getTime();
+        const phaseDuration = totalDuration / campaign.number_of_phases;
+        const phaseStartTime = startDate.getTime() + (phaseNumber - 1) * phaseDuration;
+        const phaseEndTime = startDate.getTime() + phaseNumber * phaseDuration;
+
+        if (now.getTime() < phaseStartTime) return 'upcoming';
+        if (now.getTime() > phaseEndTime) return 'completed';
+        return 'active';
+    };
+
     const formatDate = (dateString) => {
         if (!dateString) return 'Not set';
-        return new Date(dateString).toLocaleDateString();
+        return new Date(dateString).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
     };
 
     const formatBudget = (budget) => {
-        if (!budget || budget === 0) return 'Not specified';
+        if (!budget || budget === 0) return 'TBD';
         return `$${parseFloat(budget).toLocaleString()}`;
     };
+
+    const formatGoals = (goals) => {
+        if (!goals) return [];
+
+        try {
+            const goalsObj = typeof goals === 'string' ? JSON.parse(goals) : goals;
+            const formattedGoals = [];
+
+            // Extract common goal fields
+            if (goalsObj.target_audience) {
+                formattedGoals.push(`Target ${goalsObj.target_audience}`);
+            }
+            if (goalsObj.budget) {
+                formattedGoals.push(`Budget: $${parseFloat(goalsObj.budget).toLocaleString()}`);
+            }
+            if (goalsObj.primary_goal) {
+                formattedGoals.push(goalsObj.primary_goal);
+            }
+            if (goalsObj.secondary_goals && Array.isArray(goalsObj.secondary_goals)) {
+                formattedGoals.push(...goalsObj.secondary_goals);
+            }
+
+            // If no structured goals found, extract from any string values
+            if (formattedGoals.length === 0) {
+                Object.entries(goalsObj).forEach(([key, value]) => {
+                    if (typeof value === 'string' && value.length > 5) {
+                        formattedGoals.push(value);
+                    }
+                });
+            }
+
+            return formattedGoals;
+        } catch (e) {
+            // If parsing fails, return the original as a single goal
+            return [goals.toString()];
+        }
+    };
+
+    const getPlatformIcon = (platform) => {
+        const platformName = platform.toLowerCase();
+        if (platformName.includes('facebook')) return 'fab fa-facebook-f';
+        if (platformName.includes('instagram')) return 'fab fa-instagram';
+        if (platformName.includes('twitter') || platformName.includes('x.com')) return 'fab fa-twitter';
+        if (platformName.includes('linkedin')) return 'fab fa-linkedin-in';
+        if (platformName.includes('youtube')) return 'fab fa-youtube';
+        if (platformName.includes('tiktok')) return 'fab fa-tiktok';
+        if (platformName.includes('pinterest')) return 'fab fa-pinterest';
+        if (platformName.includes('google')) return 'fab fa-google';
+        return 'fas fa-globe'; // Default icon
+    };
+
+    const formatPlatforms = (campaign) => {
+        // Try to get platforms from multiple possible sources
+        let platforms = [];
+
+        if (campaign.platforms && Array.isArray(campaign.platforms)) {
+            platforms = campaign.platforms;
+        } else if (campaign.goals) {
+            try {
+                const goalsObj = typeof campaign.goals === 'string' ? JSON.parse(campaign.goals) : campaign.goals;
+                if (goalsObj.recommended_platforms && Array.isArray(goalsObj.recommended_platforms)) {
+                    platforms = goalsObj.recommended_platforms;
+                }
+            } catch (e) {
+                // Ignore parsing errors
+            }
+        }
+
+        // Default platforms if none found
+        if (platforms.length === 0) {
+            platforms = ['Facebook', 'Instagram'];
+        }
+
+        return platforms;
+    };
+
+    const CampaignCard = ({ campaign }) => (
+        <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100">
+            {/* Campaign Header with Status Badge */}
+            <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h3 className="text-2xl font-bold mb-2">{campaign.name}</h3>
+                        <p className="text-blue-100 text-sm">{campaign.description}</p>
+                    </div>
+                    <div className="flex flex-col items-end space-y-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${campaign.status === 'active' ? 'bg-green-500 text-white' :
+                            campaign.status === 'draft' ? 'bg-yellow-500 text-white' :
+                                'bg-gray-500 text-white'
+                            }`}>
+                            {campaign.status?.toUpperCase() || 'DRAFT'}
+                        </span>
+                        <span className="text-blue-100 text-xs">
+                            <i className="fas fa-robot mr-1"></i>Nova AI
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Campaign Metrics Dashboard */}
+            <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    {/* Budget Card */}
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                        <div className="text-green-600 text-2xl font-bold">
+                            {formatBudget(campaign.budget)}
+                        </div>
+                        <div className="text-green-700 text-sm font-medium">Total Budget</div>
+                    </div>
+
+                    {/* Duration Card */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                        <div className="text-blue-600 text-2xl font-bold">
+                            {campaign.campaign_length || 'TBD'}
+                        </div>
+                        <div className="text-blue-700 text-sm font-medium">Duration</div>
+                    </div>
+
+                    {/* Phases Card */}
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
+                        <div className="text-purple-600 text-2xl font-bold">
+                            {campaign.number_of_phases}
+                        </div>
+                        <div className="text-purple-700 text-sm font-medium">Phases</div>
+                    </div>
+                </div>
+
+                {/* Timeline Section with Active Phase */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                    <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
+                        <i className="fas fa-calendar-alt mr-2 text-blue-600"></i>
+                        Campaign Timeline
+                    </h4>
+
+                    {/* Main Timeline Bar */}
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="text-center">
+                            <div className="text-sm text-gray-500">Start Date</div>
+                            <div className="font-medium text-gray-800">{formatDate(campaign.start_date)}</div>
+                        </div>
+                        <div className="flex-1 mx-4">
+                            <div className="h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-sm text-gray-500">End Date</div>
+                            <div className="font-medium text-gray-800">{formatDate(campaign.end_date)}</div>
+                        </div>
+                    </div>
+
+                    {/* Phase Indicators */}
+                    {campaign.number_of_phases > 0 && (
+                        <div className="mt-4">
+                            <div className="text-sm font-medium text-gray-600 mb-2">Campaign Phases</div>
+                            <div className="flex space-x-2">
+                                {Array.from({ length: campaign.number_of_phases }, (_, index) => {
+                                    const currentPhase = getCurrentPhase(campaign, index + 1);
+                                    return (
+                                        <div
+                                            key={index}
+                                            className={`flex-1 text-center p-2 rounded-lg text-xs font-medium transition-all ${currentPhase === 'active'
+                                                ? 'bg-green-100 text-green-800 border-2 border-green-500'
+                                                : currentPhase === 'completed'
+                                                    ? 'bg-blue-100 text-blue-800'
+                                                    : 'bg-gray-100 text-gray-600'
+                                                }`}
+                                        >
+                                            <div className="font-semibold">Phase {index + 1}</div>
+                                            <div className="text-xs mt-1">
+                                                {currentPhase === 'active' && '🔄 Active'}
+                                                {currentPhase === 'completed' && '✅ Done'}
+                                                {currentPhase === 'upcoming' && '⏳ Upcoming'}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Goals & Platforms Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Campaign Goals */}
+                    {campaign.goals && (
+                        <div>
+                            <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
+                                <i className="fas fa-target mr-2 text-green-600"></i>
+                                Campaign Goals
+                            </h4>
+                            <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                <ul className="space-y-2">
+                                    {formatGoals(campaign.goals).map((goal, index) => (
+                                        <li key={index} className="flex items-start text-sm text-gray-700">
+                                            <i className="fas fa-check-circle text-green-500 mr-2 mt-0.5 text-xs"></i>
+                                            <span>{goal}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Recommended Platforms */}
+                    <div>
+                        <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
+                            <i className="fas fa-share-alt mr-2 text-blue-600"></i>
+                            Recommended Platforms
+                        </h4>
+                        <div className="bg-white border border-gray-200 rounded-lg p-4">
+                            <div className="flex flex-wrap gap-3">
+                                {formatPlatforms(campaign).map((platform, index) => (
+                                    <div key={index} className="flex items-center bg-gray-50 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors">
+                                        <i className={`${getPlatformIcon(platform)} mr-2 text-blue-600`}></i>
+                                        <span className="text-sm font-medium text-gray-700">{platform}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                    <div className="text-sm text-gray-500">
+                        Created: {formatDate(campaign.created_at)}
+                    </div>
+                    <div className="flex space-x-3">
+                        <button
+                            onClick={() => setSelectedCampaign(campaign)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                        >
+                            <i className="fas fa-eye mr-2"></i>View Details
+                        </button>
+                        <button
+                            onClick={() => generatePDF(campaign)}
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                        >
+                            <i className="fas fa-file-pdf mr-2"></i>Generate Report
+                        </button>
+                        <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            <i className="fas fa-play mr-2"></i>Launch
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 
     if (!user) {
         return (
@@ -94,39 +385,37 @@ const Campaigns = () => {
     }
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+            {/* Enhanced Header */}
+            <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Your Campaigns</h1>
-                        <p className="text-gray-600 mt-1">
-                            AI-generated campaigns from your conversations with Nova
-                        </p>
+                        <h1 className="text-3xl font-bold text-gray-800 flex items-center">
+                            <i className="fas fa-bullhorn mr-3 text-blue-600"></i>
+                            Your Campaigns
+                        </h1>
+                        <p className="text-gray-600 mt-2">Manage and track your AI-generated marketing campaigns</p>
                     </div>
-                    <button
-                        onClick={fetchCampaigns}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                    >
-                        <i className="fas fa-sync-alt mr-2"></i>
-                        Refresh
-                    </button>
+                    <div className="text-right">
+                        <div className="text-2xl font-bold text-blue-600">{campaigns.length}</div>
+                        <div className="text-sm text-gray-500">Active Campaigns</div>
+                    </div>
                 </div>
             </div>
 
             {/* Loading State */}
             {loading && (
                 <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading your campaigns...</p>
+                    <i className="fas fa-spinner fa-spin text-2xl text-blue-600 mb-4"></i>
+                    <p className="text-gray-600">Loading campaigns...</p>
                 </div>
             )}
 
             {/* Error State */}
-            {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <div className="flex">
-                        <i className="fas fa-exclamation-circle text-red-400 mr-3 mt-1"></i>
+            {!loading && error && (
+                <div className="bg-white rounded-lg shadow-md p-6">
+                    <div className="flex items-center space-x-3 text-red-600">
+                        <i className="fas fa-exclamation-triangle text-xl"></i>
                         <div>
                             <h3 className="text-red-800 font-medium">Error Loading Campaigns</h3>
                             <p className="text-red-700 text-sm mt-1">{error}</p>
@@ -153,74 +442,11 @@ const Campaigns = () => {
                 </div>
             )}
 
-            {/* Campaigns List */}
+            {/* Enhanced Campaign Grid */}
             {!loading && !error && campaigns.length > 0 && (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                     {campaigns.map((campaign) => (
-                        <div key={campaign.id} className="bg-white rounded-lg shadow-md p-6">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex-1">
-                                    <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                                        {campaign.name || 'Untitled Campaign'}
-                                    </h3>
-                                    {campaign.description && (
-                                        <p className="text-gray-600 mb-3">
-                                            {campaign.description}
-                                        </p>
-                                    )}
-                                </div>
-                                <div className="flex items-center space-x-2 ml-4">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${campaign.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
-                                        campaign.status === 'active' ? 'bg-green-100 text-green-800' :
-                                            'bg-gray-100 text-gray-800'
-                                        }`}>
-                                        {campaign.status || 'draft'}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                                <div>
-                                    <label className="text-sm font-medium text-gray-500">Campaign Type</label>
-                                    <p className="text-gray-800">{campaign.campaign_type || 'Not specified'}</p>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-500">Budget</label>
-                                    <p className="text-gray-800">{formatBudget(campaign.budget)}</p>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-500">Phases</label>
-                                    <p className="text-gray-800">{campaign.number_of_phases || 0} phases</p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label className="text-sm font-medium text-gray-500">Start Date</label>
-                                    <p className="text-gray-800">{formatDate(campaign.start_date)}</p>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-500">End Date</label>
-                                    <p className="text-gray-800">{formatDate(campaign.end_date)}</p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                                <div className="text-sm text-gray-500">
-                                    Created: {formatDate(campaign.created_at)}
-                                </div>
-                                <div className="flex space-x-2">
-                                    <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                                        <i className="fas fa-eye mr-1"></i>
-                                        View Details
-                                    </button>
-                                    <button className="text-green-600 hover:text-green-800 text-sm font-medium">
-                                        <i className="fas fa-file-pdf mr-1"></i>
-                                        Generate PDF
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        <CampaignCard key={campaign.id} campaign={campaign} />
                     ))}
                 </div>
             )}
