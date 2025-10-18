@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import NovaSessionService from '../services/NovaSessionService';
+import { saveCampaignFromNova } from '../services/campaignSaveService';
 
 const ChatBot = () => {
     const { user } = useAuth();
@@ -8,8 +8,8 @@ const ChatBot = () => {
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [copyStatus, setCopyStatus] = useState('Copy');
     const [showTooltip, setShowTooltip] = useState(false);
-    const [sessionSaved, setSessionSaved] = useState(false);
-    const [saveStatus, setSaveStatus] = useState('Save Campaign');
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     // n8n chat widget URL - replace with your actual n8n chat URL
     const N8N_CHAT_URL = process.env.REACT_APP_N8N_CHAT_URL || 'https://your-n8n-instance.app.n8n.cloud/chat/your-chat-id';
@@ -46,45 +46,53 @@ const ChatBot = () => {
         copySessionId();
     };
 
-    // Save Nova session to database
-    const saveNovaSession = async () => {
-        if (!currentSessionId || !user) {
-            console.error('Session ID or user not available');
+    // Save campaign function
+    const saveCampaign = async () => {
+        if (!user || !currentSessionId) {
+            alert('Session information is missing. Please refresh the page and try again.');
             return;
         }
 
-        setSaveStatus('Saving...');
-
+        setIsSaving(true);
         try {
-            const result = await NovaSessionService.registerSession(currentSessionId, user);
+            const result = await saveCampaignFromNova(currentSessionId, user.email);
 
             if (result.success) {
-                setSessionSaved(true);
-                setSaveStatus('Saved ✓');
-                console.log('Session saved successfully:', result.data);
+                // Generate new session ID for next campaign AFTER successful save
+                generateNewSession();
 
-                // Reset status after 3 seconds
-                setTimeout(() => {
-                    setSaveStatus('Saved ✓');
-                }, 3000);
+                alert('🎉 Campaign saved successfully! A new session ID has been generated for your next campaign. Check console for details.');
+
+                // NO REDIRECT - let's debug first
             } else {
-                setSaveStatus('Save Failed');
-                console.error('Failed to save session:', result.error);
-
-                // Reset status after 3 seconds
-                setTimeout(() => {
-                    setSaveStatus('Save Campaign');
-                }, 3000);
+                alert(`Failed to save campaign: ${result.message || 'Unknown error'}`);
             }
         } catch (error) {
-            setSaveStatus('Save Failed');
-            console.error('Error saving session:', error);
-
-            // Reset status after 3 seconds
-            setTimeout(() => {
-                setSaveStatus('Save Campaign');
-            }, 3000);
+            console.error('Save campaign error:', error);
+            alert(`An error occurred while saving the campaign: ${error.message}`);
+        } finally {
+            setIsSaving(false);
+            setShowConfirmDialog(false);
         }
+    };
+
+    // Generate new session ID
+    const generateNewSession = () => {
+        const newSessionId = generateNovaSessionId();
+        const timestamp = new Date().toISOString();
+
+        setCurrentSessionId(newSessionId);
+
+        // Store in localStorage for persistence
+        localStorage.setItem('nova_session_id', newSessionId);
+        localStorage.setItem('nova_session_created', timestamp);
+
+        console.log('Generated new Nova session ID:', newSessionId);
+    };
+
+    // Handle save campaign confirmation
+    const handleSaveCampaign = () => {
+        setShowConfirmDialog(true);
     };
 
     useEffect(() => {
@@ -112,7 +120,7 @@ const ChatBot = () => {
 
             console.log('Generated new Nova session ID for user:', user.email, 'session:', sessionId);
         }
-    }, [user, N8N_CHAT_URL]);
+    }, [user]);
 
     const handleIframeLoad = () => {
         setChatLoaded(true);
@@ -281,7 +289,7 @@ const ChatBot = () => {
                         <iframe
                             src={getChatUrl()}
                             className="w-full h-full border-0"
-                            style={{ minHeight: '500px', height: '500px' }}
+                            style={{ minHeight: '400px', height: '400px' }}
                             onLoad={handleIframeLoad}
                             title="AI Campaign Assistant"
                         />
@@ -295,26 +303,69 @@ const ChatBot = () => {
                     <div className="text-xs text-gray-500">
                         🤖 AI-powered conversation • 💾 Auto-saves campaigns • Powered by Priority One Tech
                     </div>
-
-                    {/* Save Campaign Button */}
-                    {currentSessionId && user && (
-                        <button
-                            onClick={saveNovaSession}
-                            disabled={sessionSaved || saveStatus === 'Saving...'}
-                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${sessionSaved
-                                ? 'bg-green-100 text-green-700 cursor-default'
-                                : saveStatus === 'Saving...'
-                                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                                    : 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800'
-                                }`}
-                        >
-                            {saveStatus}
-                        </button>
-                    )}
+                    <button
+                        onClick={handleSaveCampaign}
+                        disabled={!currentSessionId || isSaving}
+                        className={`px-6 py-2 rounded-lg font-semibold text-sm transition-all duration-200 flex items-center space-x-2 ${!currentSessionId || isSaving
+                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transform hover:scale-105'
+                            }`}
+                    >
+                        {isSaving ? (
+                            <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                <span>Saving...</span>
+                            </>
+                        ) : (
+                            <>
+                                <i className="fas fa-save"></i>
+                                <span>Save Campaign</span>
+                            </>
+                        )}
+                    </button>
                 </div>
             </div>
 
+            {/* Confirmation Dialog */}
+            {showConfirmDialog && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-2xl">
+                        <div className="flex items-center mb-4">
+                            <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mr-4">
+                                <i className="fas fa-exclamation-triangle text-yellow-600 text-xl"></i>
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-800">Confirm Campaign Save</h3>
+                        </div>
 
+                        <div className="mb-6">
+                            <p className="text-gray-600 mb-3">
+                                Are you sure you want to save this campaign? Please confirm that:
+                            </p>
+                            <ul className="text-sm text-gray-600 space-y-2 ml-4">
+                                <li>• ✅ You have finalized the campaign plan with Nova</li>
+                                <li>• ✅ You are happy with the campaign strategy</li>
+                                <li>• ⚠️ <strong>Once saved, the campaign cannot be modified</strong></li>
+                            </ul>
+                        </div>
+
+                        <div className="flex space-x-3">
+                            <button
+                                onClick={() => setShowConfirmDialog(false)}
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={saveCampaign}
+                                disabled={isSaving}
+                                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                            >
+                                {isSaving ? 'Saving...' : 'Save Campaign'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
