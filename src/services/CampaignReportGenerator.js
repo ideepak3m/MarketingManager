@@ -20,9 +20,7 @@ class CampaignReportGenerator {
 
             // Focus and suggest printing
             newWindow.focus();
-            setTimeout(() => {
-                alert('📄 Campaign Report Ready!\n\n👉 Click "Print" or Ctrl+P\n👉 Choose "Save as PDF"\n👉 Select "More settings" → "Layout: Portrait"\n👉 Click "Save"');
-            }, 1000);
+            // Removed alert popup for report instructions
 
             return {
                 success: true,
