@@ -584,10 +584,233 @@ const Campaigns = () => {
         );
     }
 
-
     // Campaign Modal Component with Carousel
     const CampaignModal = ({ campaign, currentSlide, onClose, onNext, onPrev, onGoToSlide }) => {
         const [showDebug, setShowDebug] = useState(false);
+        if (!campaign || Object.keys(campaign).length === 0) {
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-8 text-center">
+                        <h2 className="text-xl font-bold text-red-700 mb-4">Error: No campaign data found</h2>
+                        <p className="text-gray-700 mb-4">The campaign details could not be loaded. Please check the campaign object and try again.</p>
+                        <button className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700" onClick={onClose}>Close</button>
+                    </div>
+                </div>
+            );
+        }
+        console.log('CampaignModal props:', { campaign, currentSlide });
+        const getPhaseTitle = (phaseNumber) => {
+            const titles = {
+                1: 'Awareness Building',
+                2: 'Engagement & Interest',
+                3: 'Conversion Push'
+            };
+            return titles[phaseNumber] || 'Campaign Phase';
+        };
+        const totalPhases = campaign.number_of_phases || 3;
+        const slides = [
+            { type: 'overview', title: 'Campaign Overview' },
+            ...Array.from({ length: totalPhases }, (_, i) => ({
+                type: 'phase',
+                phaseNumber: i + 1,
+                title: `Phase ${i + 1}: ${getPhaseTitle(i + 1)}`
+            })),
+            { type: 'performance', title: 'Performance Tracking' }
+        ];
+        const renderSlideContent = (slide) => {
+            switch (slide.type) {
+                case 'overview':
+                    return (
+                        <div className="p-6">
+                            <div className="text-center mb-6">
+                                <h2 className="text-3xl font-bold text-gray-800 mb-2">{campaign.name}</h2>
+                                <p className="text-gray-600">Your Roadmap to Success</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 mb-6">
+                                <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                                    <div className="flex items-center mb-2">
+                                        <i className="fas fa-calendar-alt text-blue-600 mr-2"></i>
+                                        <h3 className="font-semibold text-gray-800">Duration</h3>
+                                    </div>
+                                    <p className="text-gray-700">{campaign.campaign_length || '8 weeks'}</p>
+                                </div>
+                                <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
+                                    <div className="flex items-center mb-2">
+                                        <i className="fas fa-dollar-sign text-green-600 mr-2"></i>
+                                        <h3 className="font-semibold text-gray-800">Budget</h3>
+                                    </div>
+                                    <p className="text-gray-700">{campaign.budget ? `$${campaign.budget.toLocaleString()}` : 'TBD'}</p>
+                                </div>
+                                <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
+                                    <div className="flex items-center mb-2">
+                                        <i className="fas fa-layer-group text-purple-600 mr-2"></i>
+                                        <h3 className="font-semibold text-gray-800">Phases</h3>
+                                    </div>
+                                    <p className="text-gray-700">{campaign.number_of_phases || 3} Strategic Phases</p>
+                                </div>
+                                <div className="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-500">
+                                    <div className="flex items-center mb-2">
+                                        <i className="fas fa-rocket text-orange-600 mr-2"></i>
+                                        <h3 className="font-semibold text-gray-800">Launch Date</h3>
+                                    </div>
+                                    <p className="text-gray-700">{campaign.start_date ? new Date(campaign.start_date).toLocaleDateString() : 'TBD'}</p>
+                                </div>
+                            </div>
+                            {campaign.description && (
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <h3 className="font-semibold text-gray-800 mb-2">Campaign Description</h3>
+                                    <p className="text-gray-700 leading-relaxed">{campaign.description}</p>
+                                </div>
+                            )}
+                        </div>
+                    );
+                case 'phase':
+                    const phaseData = getPhaseData(slide.phaseNumber);
+                    return (
+                        <div className="p-6">
+                            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 rounded-lg mb-6">
+                                <h2 className="text-2xl font-bold mb-2">Phase {slide.phaseNumber}: {phaseData.title}</h2>
+                                <p className="opacity-90">{phaseData.subtitle}</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                                        <i className="fas fa-lightbulb text-yellow-500 mr-2"></i>
+                                        Content Strategy
+                                    </h3>
+                                    <ul className="space-y-2">
+                                        {phaseData.contentStrategy.map((item, index) => (
+                                            <li key={index} className="flex items-start">
+                                                <i className="fas fa-check-circle text-green-500 mr-2 mt-1 text-sm"></i>
+                                                <span className="text-gray-700 text-sm">{item}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                                        <i className="fas fa-chart-line text-blue-500 mr-2"></i>
+                                        Success Metrics
+                                    </h3>
+                                    <ul className="space-y-2">
+                                        {phaseData.successMetrics.map((metric, index) => (
+                                            <li key={index} className="flex items-start">
+                                                <i className="fas fa-bullseye text-indigo-500 mr-2 mt-1 text-sm"></i>
+                                                <span className="text-gray-700 text-sm">{metric}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                            <div className="mt-6 bg-blue-50 p-4 rounded-lg">
+                                <p className="text-gray-700 italic text-sm">{phaseData.description}</p>
+                            </div>
+                        </div>
+                    );
+                case 'performance':
+                    return (
+                        <div className="p-6">
+                            <div className="text-center mb-6">
+                                <h2 className="text-2xl font-bold text-gray-800 mb-2">Performance Tracking</h2>
+                                <p className="text-gray-600">Monitor, measure, and optimize your campaign</p>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                <div className="bg-white border-2 border-gray-200 rounded-lg p-4 text-center">
+                                    <div className="text-2xl font-bold text-indigo-600">20K</div>
+                                    <div className="text-sm text-gray-600">Total Reach</div>
+                                </div>
+                                <div className="bg-white border-2 border-gray-200 rounded-lg p-4 text-center">
+                                    <div className="text-2xl font-bold text-green-600">3%</div>
+                                    <div className="text-sm text-gray-600">Engagement Rate</div>
+                                </div>
+                                <div className="bg-white border-2 border-gray-200 rounded-lg p-4 text-center">
+                                    <div className="text-2xl font-bold text-purple-600">10%</div>
+                                    <div className="text-sm text-gray-600">Conversion Lift</div>
+                                </div>
+                                <div className="bg-white border-2 border-gray-200 rounded-lg p-4 text-center">
+                                    <div className="text-2xl font-bold text-blue-600">{campaign.budget ? '$' + Math.round(campaign.budget / 1000) + 'K' : '$2K'}</div>
+                                    <div className="text-sm text-gray-600">Smart Budget</div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
+                                        <i className="fas fa-tools text-gray-600 mr-2"></i>
+                                        Tracking Tools
+                                    </h3>
+                                    <ul className="space-y-2 text-sm">
+                                        <li className="flex items-center"><i className="fas fa-check text-green-500 mr-2"></i>Google Analytics 4</li>
+                                        <li className="flex items-center"><i className="fas fa-check text-green-500 mr-2"></i>Facebook Pixel</li>
+                                        <li className="flex items-center"><i className="fas fa-check text-green-500 mr-2"></i>UTM Parameters</li>
+                                        <li className="flex items-center"><i className="fas fa-check text-green-500 mr-2"></i>Conversion Tracking</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-lg">
+                                    <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
+                                        <i className="fas fa-calendar text-gray-600 mr-2"></i>
+                                        Reporting Schedule
+                                    </h3>
+                                    <ul className="space-y-2 text-sm">
+                                        <li className="flex items-center"><i className="fas fa-circle text-blue-500 mr-2 text-xs"></i>Daily: Monitor key metrics</li>
+                                        <li className="flex items-center"><i className="fas fa-circle text-green-500 mr-2 text-xs"></i>Weekly: Performance review</li>
+                                        <li className="flex items-center"><i className="fas fa-circle text-purple-500 mr-2 text-xs"></i>Bi-weekly: Optimization</li>
+                                        <li className="flex items-center"><i className="fas fa-circle text-red-500 mr-2 text-xs"></i>Monthly: Full analysis</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                default:
+                    return <div>Loading...</div>;
+            }
+        };
+        // Main modal return
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full p-8 relative">
+                    <button className="absolute top-4 right-4 text-gray-500 hover:text-gray-700" onClick={onClose}>
+                        <i className="fas fa-times text-xl"></i>
+                    </button>
+                    <div className="mb-6">
+                        <h2 className="text-2xl font-bold text-gray-800 text-center">{slides[currentSlide].title}</h2>
+                    </div>
+                    <div>{renderSlideContent(slides[currentSlide])}</div>
+                    {/* Carousel Controls */}
+                    <div className="flex justify-between items-center mt-6">
+                        <button className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700" onClick={onPrev}>
+                            <i className="fas fa-chevron-left"></i> Prev
+                        </button>
+                        <div className="flex space-x-2">
+                            {slides.map((slide, idx) => (
+                                <button
+                                    key={idx}
+                                    className={`w-3 h-3 rounded-full border-2 ${idx === currentSlide ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-400'}`}
+                                    onClick={() => onGoToSlide(idx)}
+                                    aria-label={`Go to ${slide.title}`}
+                                />
+                            ))}
+                        </div>
+                        <button className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700" onClick={onNext}>
+                            Next <i className="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    {/* Debug Section */}
+                    <div className="mt-4">
+                        <button
+                            className="px-3 py-1 bg-gray-200 rounded text-xs text-gray-700 hover:bg-gray-300"
+                            onClick={() => setShowDebug((prev) => !prev)}
+                        >
+                            {showDebug ? 'Hide' : 'Show'} Debug Campaign Object
+                        </button>
+                        {showDebug && (
+                            <pre className="bg-gray-100 p-3 mt-2 rounded text-xs overflow-x-auto max-h-64">
+                                {JSON.stringify(campaign, null, 2)}
+                            </pre>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
 
         const getPhaseData = (phaseNumber) => {
             const phaseData = {
@@ -649,304 +872,121 @@ const Campaigns = () => {
                     ]
                 }
             };
-            return phaseData[phaseNumber] || phaseData[1];
-        };
 
-        if (!campaign || Object.keys(campaign).length === 0) {
-            return (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-8 text-center">
-                        <h2 className="text-xl font-bold text-red-700 mb-4">Error: No campaign data found</h2>
-                        <p className="text-gray-700 mb-4">
-                            The campaign details could not be loaded. Please check the campaign object and try again.
-                        </p>
-                        <button
-                            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700"
-                            onClick={onClose}
-                        >
-                            Close
-                        </button>
-                    </div>
-                </div>
-            );
+            return phaseData[phaseNumber] || phaseData[1];
         }
 
-        const getPhaseTitle = (phaseNumber) => {
-            const titles = {
-                1: 'Awareness Building',
-                2: 'Engagement & Interest',
-                3: 'Conversion Push'
-            };
-            return titles[phaseNumber] || 'Campaign Phase';
-        };
-
-        const totalPhases = campaign.number_of_phases || 3;
-        const slides = [
-            { type: 'overview', title: 'Campaign Overview' },
-            ...Array.from({ length: totalPhases }, (_, i) => ({
-                type: 'phase',
-                phaseNumber: i + 1,
-                title: `Phase ${i + 1}: ${getPhaseTitle(i + 1)}`
-            })),
-            { type: 'performance', title: 'Performance Tracking' }
-        ];
-
-        const renderSlideContent = (slide) => {
-            switch (slide.type) {
-                case 'overview':
-                    return (
-                        <div className="p-6">
-                            <div className="text-center mb-6">
-                                <h2 className="text-3xl font-bold text-gray-800 mb-2">{campaign.name}</h2>
-                                <p className="text-gray-600">Your Roadmap to Success</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 mb-6">
-                                <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
-                                    <div className="flex items-center mb-2">
-                                        <i className="fas fa-calendar-alt text-blue-600 mr-2"></i>
-                                        <h3 className="font-semibold text-gray-800">Duration</h3>
-                                    </div>
-                                    <p className="text-gray-700">{campaign.campaign_length || '8 weeks'}</p>
-                                </div>
-                                <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
-                                    <div className="flex items-center mb-2">
-                                        <i className="fas fa-dollar-sign text-green-600 mr-2"></i>
-                                        <h3 className="font-semibold text-gray-800">Budget</h3>
-                                    </div>
-                                    <p className="text-gray-700">
-                                        {campaign.budget ? `$${campaign.budget.toLocaleString()}` : 'TBD'}
-                                    </p>
-                                </div>
-                            </div>
-                            {campaign.description && (
-                                <div className="bg-gray-50 p-4 rounded-lg">
-                                    <h3 className="font-semibold text-gray-800 mb-2">Campaign Description</h3>
-                                    <p className="text-gray-700 leading-relaxed">{campaign.description}</p>
-                                </div>
-                            )}
-                        </div>
-                    );
-                case 'phase':
-                    const phaseData = getPhaseData(slide.phaseNumber);
-                    return (
-                        <div className="p-6">
-                            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 rounded-lg mb-6">
-                                <h2 className="text-2xl font-bold mb-2">
-                                    Phase {slide.phaseNumber}: {phaseData.title}
-                                </h2>
-                                <p className="opacity-90">{phaseData.subtitle}</p>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-                                        <i className="fas fa-lightbulb text-yellow-500 mr-2"></i>
-                                        Content Strategy
-                                    </h3>
-                                    <ul className="space-y-2">
-                                        {phaseData.contentStrategy.map((item, index) => (
-                                            <li key={index} className="flex items-start">
-                                                <i className="fas fa-check-circle text-green-500 mr-2 mt-1 text-sm"></i>
-                                                <span className="text-gray-700 text-sm">{item}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-                                        <i className="fas fa-chart-line text-blue-500 mr-2"></i>
-                                        Success Metrics
-                                    </h3>
-                                    <ul className="space-y-2">
-                                        {phaseData.successMetrics.map((metric, index) => (
-                                            <li key={index} className="flex items-start">
-                                                <i className="fas fa-bullseye text-indigo-500 mr-2 mt-1 text-sm"></i>
-                                                <span className="text-gray-700 text-sm">{metric}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                case 'performance':
-                    return (
-                        <div className="p-6 text-center">
-                            <h2 className="text-2xl font-bold text-gray-800 mb-4">Performance Tracking</h2>
-                            <p className="text-gray-600">Monitor, measure, and optimize your campaign.</p>
-                        </div>
-                    );
-                default:
-                    return <div>Loading...</div>;
-            }
-        };
-
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full p-8 relative">
-                    <button
-                        className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-                        onClick={onClose}
-                    >
-                        <i className="fas fa-times text-xl"></i>
-                    </button>
-
-                    <div className="mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800 text-center">
-                            {slides[currentSlide].title}
-                        </h2>
-                    </div>
-
-                    <div>{renderSlideContent(slides[currentSlide])}</div>
-
-                    <div className="flex justify-between items-center mt-6">
-                        <button
-                            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700"
-                            onClick={onPrev}
-                        >
-                            <i className="fas fa-chevron-left"></i> Prev
-                        </button>
-                        <div className="flex space-x-2">
-                            {slides.map((_, idx) => (
-                                <button
-                                    key={idx}
-                                    className={`w-3 h-3 rounded-full border-2 ${
-                                        idx === currentSlide
-                                            ? 'bg-blue-600 border-blue-600'
-                                            : 'bg-white border-gray-400'
-                                    }`}
-                                    onClick={() => onGoToSlide(idx)}
-                                />
-                            ))}
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+                {/* ...existing code... */}
+                {/* Enhanced Header */}
+                <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-800 flex items-center">
+                                <i className="fas fa-bullhorn mr-3 text-blue-600"></i>
+                                Your Campaigns
+                            </h1>
+                            <p className="text-gray-600 mt-2">Manage and track your AI-generated marketing campaigns</p>
                         </div>
-                        <button
-                            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700"
-                            onClick={onNext}
-                        >
-                            Next <i className="fas fa-chevron-right"></i>
-                        </button>
-                    </div>
-
-                    <div className="mt-4">
-                        <button
-                            className="px-3 py-1 bg-gray-200 rounded text-xs text-gray-700 hover:bg-gray-300"
-                            onClick={() => setShowDebug((prev) => !prev)}
-                        >
-                            {showDebug ? 'Hide' : 'Show'} Debug Campaign Object
-                        </button>
-                        {showDebug && (
-                            <pre className="bg-gray-100 p-3 mt-2 rounded text-xs overflow-x-auto max-h-64">
-                                {JSON.stringify(campaign, null, 2)}
-                            </pre>
-                        )}
+                        <div className="text-right">
+                            <div className="text-2xl font-bold text-blue-600">{campaigns.length}</div>
+                            <div className="text-sm text-gray-500">Active Campaigns</div>
+                        </div>
                     </div>
                 </div>
+
+                {/* Loading State */}
+                {loading && (
+                    <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                        <i className="fas fa-spinner fa-spin text-2xl text-blue-600 mb-4"></i>
+                        <p className="text-gray-600">Loading campaigns...</p>
+                    </div>
+                )}
+
+                {/* Error State */}
+                {!loading && error && (
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                        <div className="flex items-center space-x-3 text-red-600">
+                            <i className="fas fa-exclamation-triangle text-xl"></i>
+                            <div>
+                                <h3 className="text-red-800 font-medium">Error Loading Campaigns</h3>
+                                <p className="text-red-700 text-sm mt-1">{error}</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* No Campaigns State */}
+                {!loading && !error && campaigns.length === 0 && (
+                    <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                        <i className="fas fa-bullhorn text-4xl text-gray-400 mb-4"></i>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-2">No Campaigns Yet</h3>
+                        <p className="text-gray-600 mb-4">
+                            You haven't created any campaigns yet. Start by chatting with Nova AI!
+                        </p>
+                        <a
+                            href="/chatbot"
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                        >
+                            <i className="fas fa-comments mr-2"></i>
+                            Chat with Nova AI
+                        </a>
+                    </div>
+                )}
+
+                {/* Enhanced Campaign Grid */}
+                {!loading && !error && campaigns.length > 0 && (
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        {campaigns.map((campaign) => (
+                            <CampaignCard key={campaign.id} campaign={campaign} />
+                        ))}
+                    </div>
+                )}
+
+                {/* Campaign Details Modal with Carousel */}
+                {selectedCampaign && (
+                    <CampaignModal
+                        campaign={selectedCampaign}
+                        currentSlide={currentSlide}
+                        onClose={closeModal}
+                        onNext={nextSlide}
+                        onPrev={prevSlide}
+                        onGoToSlide={goToSlide}
+                    />
+                )}
+
+                {/* Launch Campaign Modal */}
+                {showLaunchModal && launchingCampaign && (
+                    <LaunchModal
+                        campaign={launchingCampaign}
+                        onClose={() => {
+                            setShowLaunchModal(false);
+                            setLaunchingCampaign(null);
+                            setLaunchDate(null);
+                        }}
+                    />
+                )}
+
+                {/* Confirm Timeline Modal */}
+                {showConfirmModal && calculatedTimeline && (
+                    <ConfirmTimelineModal
+                        timeline={calculatedTimeline}
+                        onClose={() => {
+                            setShowConfirmModal(false);
+                            setCalculatedTimeline(null);
+                            setShowLaunchModal(true);
+                        }}
+                        onConfirm={() => {
+                            // Next step: update DB with calculated dates
+                            setShowConfirmModal(false);
+                            setCalculatedTimeline(null);
+                            // TODO: Implement DB update logic in next phase
+                        }}
+                    />
+                )}
             </div>
         );
-    };
+    }
 
-    // 🟢 MAIN RETURN FOR Campaigns COMPONENT
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-            {/* Header, loading/error states, modals, grid, etc. */}
-            <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-800 flex items-center">
-                            <i className="fas fa-bullhorn mr-3 text-blue-600"></i>
-                            Your Campaigns
-                        </h1>
-                        <p className="text-gray-600 mt-2">Manage and track your AI-generated marketing campaigns</p>
-                    </div>
-                    <div className="text-right">
-                        <div className="text-2xl font-bold text-blue-600">{campaigns.length}</div>
-                        <div className="text-sm text-gray-500">Active Campaigns</div>
-                    </div>
-                </div>
-            </div>
-
-            {loading && (
-                <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                    <i className="fas fa-spinner fa-spin text-2xl text-blue-600 mb-4"></i>
-                    <p className="text-gray-600">Loading campaigns...</p>
-                </div>
-            )}
-
-            {!loading && error && (
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <div className="flex items-center space-x-3 text-red-600">
-                        <i className="fas fa-exclamation-triangle text-xl"></i>
-                        <div>
-                            <h3 className="text-red-800 font-medium">Error Loading Campaigns</h3>
-                            <p className="text-red-700 text-sm mt-1">{error}</p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {!loading && !error && campaigns.length === 0 && (
-                <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                    <i className="fas fa-bullhorn text-4xl text-gray-400 mb-4"></i>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">No Campaigns Yet</h3>
-                    <p className="text-gray-600 mb-4">
-                        You haven't created any campaigns yet. Start by chatting with Nova AI!
-                    </p>
-                    <a
-                        href="/chatbot"
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-                    >
-                        <i className="fas fa-comments mr-2"></i>
-                        Chat with Nova AI
-                    </a>
-                </div>
-            )}
-
-            {!loading && !error && campaigns.length > 0 && (
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                    {campaigns.map((campaign) => (
-                        <CampaignCard key={campaign.id} campaign={campaign} />
-                    ))}
-                </div>
-            )}
-
-            {selectedCampaign && (
-                <CampaignModal
-                    campaign={selectedCampaign}
-                    currentSlide={currentSlide}
-                    onClose={closeModal}
-                    onNext={nextSlide}
-                    onPrev={prevSlide}
-                    onGoToSlide={goToSlide}
-                />
-            )}
-
-            {showLaunchModal && launchingCampaign && (
-                <LaunchModal
-                    campaign={launchingCampaign}
-                    onClose={() => {
-                        setShowLaunchModal(false);
-                        setLaunchingCampaign(null);
-                        setLaunchDate(null);
-                    }}
-                />
-            )}
-
-            {showConfirmModal && calculatedTimeline && (
-                <ConfirmTimelineModal
-                    timeline={calculatedTimeline}
-                    onClose={() => {
-                        setShowConfirmModal(false);
-                        setCalculatedTimeline(null);
-                        setShowLaunchModal(true);
-                    }}
-                    onConfirm={() => {
-                        setShowConfirmModal(false);
-                        setCalculatedTimeline(null);
-                        // TODO: Implement DB update logic in next phase
-                    }}
-                />
-            )}
-        </div>
-    );
-};
-
-export default Campaigns;
+    export default Campaigns;
