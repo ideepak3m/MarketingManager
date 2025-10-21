@@ -1,3 +1,4 @@
+import { supabase } from '../../services/supabase';
 import CampaignReportGenerator from '../../services/CampaignReportGenerator';
 import React, { useState } from 'react';
 import CampaignCard from './CampaignCard';
@@ -7,7 +8,7 @@ import LaunchModal from './LaunchModal';
 import ConfirmTimelineModal from './ConfirmTimelineModal';
 
 const Campaigns = () => {
-    const { campaigns, loading, error } = useCampaigns();
+    const { campaigns, loading, error, refetch } = useCampaigns();
     const [selectedCampaign, setSelectedCampaign] = useState(null);
     const [showLaunchModal, setShowLaunchModal] = useState(false);
     const [launchingCampaign, setLaunchingCampaign] = useState(null);
@@ -73,28 +74,62 @@ const Campaigns = () => {
 
     // Handler for confirming and launching the campaign
     const handleConfirmLaunch = async () => {
+        // Log Supabase connection details for debugging
+        // Log Supabase connection details for debugging
+        // Import the raw values from supabase.js
+        // eslint-disable-next-line
+
         console.log('Confirming launch with timeline:', calculatedTimeline);
-
-        // TODO: Implement actual launch logic here
-        // Example:
-        // - Update campaign status to 'active'
-        // - Update campaign start_date and end_date
-        // - Update phase dates in campaign_phases table
-        // - Call API endpoint
-
+        console.log('launchingCampaign:', launchingCampaign);
+        console.log('launchingCampaign.id:', launchingCampaign && launchingCampaign.id);
+        console.log('Current campaigns list:', campaigns);
+        if (!launchingCampaign || !calculatedTimeline) return;
         try {
-            // Placeholder for actual implementation
-            alert('Campaign launched successfully! (Implementation pending)');
+            // Update campaign table: status, start_date, end_date
+            const { data: campaignUpdate, error: campaignError, status } = await supabase
+                .from('campaigns')
+                .update({
+                    status: 'planned',
+                    start_date: calculatedTimeline.campaignStart,
+                    end_date: calculatedTimeline.campaignEnd
+                })
+                .eq('id', launchingCampaign.id)
+                .select();
+            console.log('Campaign update result:', campaignUpdate, 'Error:', campaignError, 'Status:', status);
+            if (campaignError) throw campaignError;
+            if (!campaignUpdate || campaignUpdate.length === 0) {
+                throw new Error('No campaign rows updated. Check campaign ID and DB connection.');
+            }
 
+            // Update campaign_phases table: status, start_date, end_date for each phase
+            for (const phase of calculatedTimeline.phases) {
+                console.log('Updating campaign_phase:', phase);
+                const { data: phaseUpdate, error: phaseError } = await supabase
+                    .from('campaign_phases')
+                    .update({
+                        status: 'planned',
+                        start_date: phase.start,
+                        end_date: phase.end
+                    })
+                    .eq('campaign_id', launchingCampaign.id)
+                    .eq('name', phase.name)
+                    .select();
+                console.log(`Phase update for ${phase.name}:`, phaseUpdate, 'Error:', phaseError, 'Phase ID:', phase.id);
+                if (phaseError) throw phaseError;
+                if (!phaseUpdate || phaseUpdate.length === 0) {
+                    throw new Error(`No rows updated for phase ${phase.name}. Check phase name, campaign_id, and phase id.`);
+                }
+            }
+
+            alert('Campaign launched and timeline updated!');
             setShowConfirmModal(false);
             setCalculatedTimeline(null);
             setLaunchingCampaign(null);
-
-            // Optionally refresh campaigns list
-            // refetch();
+            // Refresh campaigns list to show updated dates
+            refetch();
         } catch (err) {
             console.error('Error launching campaign:', err);
-            alert('Failed to launch campaign: ' + err.message);
+            alert('Failed to launch campaign: ' + (err.message || err));
         }
     };
 

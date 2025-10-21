@@ -83,11 +83,52 @@ const CampaignCard = ({ campaign, openModal, generatePDF, setLaunchingCampaign, 
     <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100" data-sessionid={campaign.userSessionID || ''}>
         <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
             <div className="flex justify-between items-start">
-                <div>
-                    <h3 className="text-2xl font-bold mb-2">{campaign.name}</h3>
-                    <p className="text-blue-100 text-sm">{campaign.description}</p>
+                <div style={{ minWidth: 0, width: '100%', paddingRight: 5 }}>
+                    <h3
+                        className="text-2xl font-bold mb-2"
+                        style={{
+                            height: '2.8em', // ~2 lines
+                            overflow: 'auto',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            whiteSpace: 'normal',
+                            wordBreak: 'break-word',
+                        }}
+                        title={campaign.name}
+                    >
+                        {campaign.name}
+                    </h3>
+                    <div
+                        style={{
+                            height: '5.6em', // ~4 lines
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                            paddingRight: 12,
+                            marginRight: -12,
+                            background: 'transparent',
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: '#c7d2fe #1e293b',
+                        }}
+                    >
+                        <p
+                            className="text-blue-100 text-sm"
+                            style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 4,
+                                WebkitBoxOrient: 'vertical',
+                                whiteSpace: 'normal',
+                                wordBreak: 'break-word',
+                                margin: 0,
+                                paddingRight: 8,
+                            }}
+                            title={campaign.description}
+                        >
+                            {campaign.description}
+                        </p>
+                    </div>
                 </div>
-                <div className="flex flex-col items-end space-y-2">
+                <div className="flex flex-col items-end space-y-2" style={{ marginTop: 8 }}>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${campaign.status === 'active' ? 'bg-green-500 text-white' : campaign.status === 'draft' ? 'bg-yellow-500 text-white' : 'bg-gray-300 text-gray-800'}`}>{campaign.status}</span>
                 </div>
             </div>
@@ -134,24 +175,67 @@ const CampaignCard = ({ campaign, openModal, generatePDF, setLaunchingCampaign, 
                     </div>
                 </div>
                 {/* Phase Indicators */}
-                {campaign.number_of_phases > 0 && (
+                {campaign.phases && campaign.phases.length > 0 && (
                     <div className="mt-4">
                         <div className="text-sm font-medium text-gray-600 mb-2">Campaign Phases</div>
-                        <div className="flex space-x-2">
-                            {Array.from({ length: campaign.number_of_phases }, (_, index) => (
-                                <div key={index} className="flex-1 text-center p-2 rounded-lg text-xs font-medium transition-all bg-gray-100 text-gray-600">
-                                    <div className="font-semibold">Phase {index + 1}</div>
-                                    <div className="text-xs mt-1">⏳ Upcoming</div>
-                                </div>
-                            ))}
+                        <div className="flex space-x-2 ">
+                            {(campaign.phases
+                                .slice() // copy array
+                                .sort((a, b) => {
+                                    // Prefer explicit order field, fallback to start_date
+                                    if (a.order !== undefined && b.order !== undefined) {
+                                        return a.order - b.order;
+                                    } else if (a.start_date && b.start_date) {
+                                        return new Date(a.start_date) - new Date(b.start_date);
+                                    } else {
+                                        return 0;
+                                    }
+                                })
+                            ).map((phase, index) => {
+                                // Calculate phase status
+                                const now = new Date();
+                                const start = phase.start_date ? new Date(phase.start_date) : null;
+                                const end = phase.end_date ? new Date(phase.end_date) : null;
+                                let statusLabel = '⏳ Upcoming';
+                                let bgColor = 'bg-rose-50';
+                                if (start && end) {
+                                    if (now < start) {
+                                        statusLabel = '⏳ Upcoming';
+                                        bgColor = 'bg-rose-50';
+                                    } else if (now >= start && now <= end) {
+                                        statusLabel = '🟢 Active';
+                                        bgColor = 'bg-green-50';
+                                    } else if (now > end) {
+                                        statusLabel = '✅ Completed';
+                                        bgColor = 'bg-gray-100';
+                                    }
+                                }
+                                // Calculate phase length
+                                let length = '';
+                                if (start && end) {
+                                    const diff = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                                    length = `${diff} day${diff !== 1 ? 's' : ''}`;
+                                }
+                                return (
+                                    <div key={phase.id || index} className={`flex-1 text-center p-2 rounded-lg text-xs font-medium transition-all ${bgColor} text-gray-600`}>
+                                        <div className="font-semibold">{phase.name || `Phase ${index + 1}`}</div>
+                                        <div className="text-xs mt-1">{start ? start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'No date'}</div>
+                                        <div className="text-xs mt-1">{length}</div>
+                                        <div className="text-xs mt-1">{statusLabel}</div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
             </div>
             <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                <div className="text-sm text-gray-500">Created: {formatDate(campaign.created_at)}</div>
+                <div className="flex flex-col text-gray-500" style={{ minWidth: 90, maxWidth: 140 }}>
+                    <span className="text-sm">Created</span>
+                    <span className="text-xs">{formatDate(campaign.created_at)}</span>
+                </div>
                 <div className="flex space-x-3">
-                    <button onClick={() => { console.log('View Details clicked', campaign); openModal && openModal(campaign); }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"><i className="fas fa-eye mr-2"></i>View Details</button>
+                    <button onClick={() => { console.log('View Details clicked', campaign); openModal && openModal(campaign); }} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors"><i className="fas fa-eye mr-1"></i>View Details</button>
                     <button onClick={() => { console.log('Generate Report clicked', campaign); generatePDF && generatePDF(campaign); }} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"><i className="fas fa-file-pdf mr-2"></i>Generate Report</button>
                     <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={() => { console.log('Launch clicked', campaign); setLaunchingCampaign && setLaunchingCampaign(campaign); setShowLaunchModal && setShowLaunchModal(true); }}><i className="fas fa-play mr-2"></i>Launch</button>
                 </div>

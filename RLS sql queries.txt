@@ -1,0 +1,45 @@
+RLS updates for Campaigns table
+CREATE POLICY campaigns_update_by_id ON public.campaigns
+  FOR UPDATE
+  TO authenticated
+  USING (
+    user_id IN (
+      SELECT nus.session_id
+      FROM public.nova_user_sessions nus
+      WHERE nus.user_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    user_id IN (
+      SELECT nus.session_id
+      FROM public.nova_user_sessions nus
+      WHERE nus.user_id = auth.uid()
+    )
+  );
+  
+ RLS insert for Campaigns table
+ CREATE POLICY campaigns_insert_by_id ON public.campaigns
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    user_id IN (
+      SELECT nus.session_id
+      FROM public.nova_user_sessions nus
+      WHERE nus.user_id = auth.uid()
+    )
+  );
+  
+RLS insert for campaign_phases table
+CREATE POLICY campaign_phases_insert_by_id ON public.campaign_phases
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    user_id IN (
+      SELECT nus.session_id
+      FROM public.nova_user_sessions nus
+      WHERE nus.user_id = auth.uid()
+    )
+  );
+  
+RLS update for campaign_phases table
+  

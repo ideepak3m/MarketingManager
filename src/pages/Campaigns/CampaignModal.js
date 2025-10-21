@@ -99,9 +99,9 @@ const CampaignModal = ({ campaign, currentSlide = 0, onClose, onNext, onPrev, on
             case 'overview':
                 return (
                     <div className="p-6">
-                        <div className="text-center mb-6">
-                            <h2 className="text-3xl font-bold text-gray-800 mb-2">{campaign.name}</h2>
-                            <p className="text-gray-600">Your Roadmap to Success</p>
+                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 rounded-lg mb-6">
+                            <h2 className="text-3xl font-bold ">{campaign.name}</h2>
+                            <p className="text-center">Your Roadmap to Success</p>
                         </div>
                         <div className="grid grid-cols-2 gap-4 mb-6">
                             <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
