@@ -8,7 +8,15 @@ import LaunchModal from './LaunchModal';
 import ConfirmTimelineModal from './ConfirmTimelineModal';
 
 const Campaigns = () => {
+    // Submenu state: 'active', 'draft', 'completed'
+    const [submenu, setSubmenu] = useState('active');
+
+    // Get campaigns from hook first
     const { campaigns, loading, error, refetch } = useCampaigns();
+    // Filter campaigns by submenu
+    const draftCampaigns = campaigns.filter(c => c.status && c.status.toLowerCase() === 'draft');
+    const completedCampaigns = campaigns.filter(c => c.status && c.status.toLowerCase() === 'completed');
+    const activeCampaigns = campaigns.filter(c => c.status && c.status.toLowerCase() !== 'draft' && c.status.toLowerCase() !== 'completed');
     const [selectedCampaign, setSelectedCampaign] = useState(null);
     const [showLaunchModal, setShowLaunchModal] = useState(false);
     const [launchingCampaign, setLaunchingCampaign] = useState(null);
@@ -160,6 +168,7 @@ const Campaigns = () => {
         );
     }
 
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
             {/* Header */}
@@ -174,40 +183,118 @@ const Campaigns = () => {
                     </div>
                     <div className="text-right">
                         <div className="text-2xl font-bold text-blue-600">{campaigns.length}</div>
-                        <div className="text-sm text-gray-500">Active Campaigns</div>
+                        <div className="text-sm text-gray-500">Total Campaigns</div>
                     </div>
+                </div>
+                {/* Submenu Tabs */}
+                <div className="mt-8 flex space-x-4 border-b border-gray-200">
+                    <button
+                        className={`pb-2 px-4 font-semibold text-sm transition-colors border-b-2 ${submenu === 'active' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-blue-600'}`}
+                        onClick={() => setSubmenu('active')}
+                    >
+                        Active ({activeCampaigns.length})
+                    </button>
+                    <button
+                        className={`pb-2 px-4 font-semibold text-sm transition-colors border-b-2 ${submenu === 'draft' ? 'border-yellow-500 text-yellow-700' : 'border-transparent text-gray-500 hover:text-yellow-600'}`}
+                        onClick={() => setSubmenu('draft')}
+                    >
+                        Draft ({draftCampaigns.length})
+                    </button>
+                    <button
+                        className={`pb-2 px-4 font-semibold text-sm transition-colors border-b-2 ${submenu === 'completed' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500 hover:text-green-600'}`}
+                        onClick={() => setSubmenu('completed')}
+                    >
+                        Completed ({completedCampaigns.length})
+                    </button>
                 </div>
             </div>
 
-            {/* Campaign Cards Grid */}
-            {campaigns.length === 0 ? (
-                <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                    <i className="fas fa-bullhorn text-4xl text-gray-400 mb-4"></i>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">No Campaigns Yet</h3>
-                    <p className="text-gray-600 mb-4">
-                        You haven't created any campaigns yet. Start by chatting with Nova AI!
-                    </p>
-                    <a
-                        href="/chatbot"
-                        className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-                    >
-                        <i className="fas fa-comments mr-2"></i>
-                        Chat with Nova AI
-                    </a>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                    {campaigns.map(campaign => (
-                        <CampaignCard
-                            key={campaign.id}
-                            campaign={campaign}
-                            openModal={openModal}
-                            generatePDF={generatePDF}
-                            setLaunchingCampaign={setLaunchingCampaign}
-                            setShowLaunchModal={setShowLaunchModal}
-                        />
-                    ))}
-                </div>
+            {/* Campaign Cards Grid by submenu */}
+            {submenu === 'active' && (
+                activeCampaigns.length === 0 ? (
+                    <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                        <i className="fas fa-bullhorn text-4xl text-gray-400 mb-4"></i>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-2">No Active Campaigns</h3>
+                        <p className="text-gray-600 mb-4">
+                            You have no active campaigns. Start by launching or creating a new campaign!
+                        </p>
+                        <a
+                            href="/chatbot"
+                            className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                        >
+                            <i className="fas fa-comments mr-2"></i>
+                            Chat with Nova AI
+                        </a>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        {activeCampaigns.map(campaign => (
+                            <CampaignCard
+                                key={campaign.id}
+                                campaign={campaign}
+                                openModal={openModal}
+                                generatePDF={generatePDF}
+                                setLaunchingCampaign={setLaunchingCampaign}
+                                setShowLaunchModal={setShowLaunchModal}
+                            />
+                        ))}
+                    </div>
+                )
+            )}
+            {submenu === 'draft' && (
+                draftCampaigns.length === 0 ? (
+                    <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                        <i className="fas fa-bullhorn text-4xl text-gray-400 mb-4"></i>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-2">No Draft Campaigns</h3>
+                        <p className="text-gray-600 mb-4">
+                            You have no draft campaigns. Start by creating a new campaign!
+                        </p>
+                        <a
+                            href="/chatbot"
+                            className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                        >
+                            <i className="fas fa-comments mr-2"></i>
+                            Chat with Nova AI
+                        </a>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        {draftCampaigns.map(campaign => (
+                            <CampaignCard
+                                key={campaign.id}
+                                campaign={campaign}
+                                openModal={openModal}
+                                generatePDF={generatePDF}
+                                setLaunchingCampaign={setLaunchingCampaign}
+                                setShowLaunchModal={setShowLaunchModal}
+                            />
+                        ))}
+                    </div>
+                )
+            )}
+            {submenu === 'completed' && (
+                completedCampaigns.length === 0 ? (
+                    <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                        <i className="fas fa-bullhorn text-4xl text-gray-400 mb-4"></i>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-2">No Completed Campaigns</h3>
+                        <p className="text-gray-600 mb-4">
+                            You have no completed campaigns yet.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        {completedCampaigns.map(campaign => (
+                            <CampaignCard
+                                key={campaign.id}
+                                campaign={campaign}
+                                openModal={openModal}
+                                generatePDF={generatePDF}
+                                setLaunchingCampaign={setLaunchingCampaign}
+                                setShowLaunchModal={setShowLaunchModal}
+                            />
+                        ))}
+                    </div>
+                )
             )}
 
             {/* Campaign Details Modal */}
