@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+import SocialPlatforms from './pages/SocialPlatforms';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import Layout from './components/Layout';
@@ -24,6 +25,7 @@ function App() {
                             <Route path="/analytics" element={<Analytics />} />
                             <Route path="/chatbot" element={<ChatBot />} />
                             {/* <Route path="/reports" element={<CampaignReports />} /> */}
+                            <Route path="/social-platforms" element={<SocialPlatforms />} />
                         </Routes>
                     </Layout>
                 </ProtectedRoute>

@@ -1,4 +1,27 @@
 import { supabase, TABLES } from './supabase'
+// =============================================
+// CAMPAIGN POSTS OPERATIONS
+// =============================================
+
+export const createCampaignPost = async (postData) => {
+    try {
+        console.log('Inserting into campaign_posts:', postData);
+        const { data, error } = await supabase
+            .from(TABLES.CAMPAIGN_POSTS)
+            .insert([postData])
+            .select()
+            .single();
+        console.log('Insert result:', { data, error });
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.log('Insert error:', error);
+        return { data: null, error };
+    }
+}
+
+
+// ...existing code...
 
 // =============================================
 // USER PROFILE OPERATIONS

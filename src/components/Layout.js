@@ -13,20 +13,14 @@ const Layout = ({ children }) => {
         { name: 'Content', path: '/content', icon: 'fas fa-image' },
         { name: 'Analytics', path: '/analytics', icon: 'fas fa-chart-line' },
         { name: 'AI Assistant', path: '/chatbot', icon: 'fas fa-robot' },
+        { name: 'Social Media', path: '/social-platforms', icon: 'fas fa-share-alt' },
         // { name: 'Reports', path: '/reports', icon: 'fas fa-file-pdf' }, // Temporarily disabled
-    ];
-
-    const socialPlatforms = [
-        { name: 'X (Twitter)', icon: 'fab fa-twitter', color: 'text-twitter' },
-        { name: 'Facebook', icon: 'fab fa-facebook', color: 'text-facebook' },
-        { name: 'Instagram', icon: 'fab fa-instagram', color: 'text-instagram' },
-        { name: 'LinkedIn', icon: 'fab fa-linkedin', color: 'text-linkedin' },
     ];
 
     return (
         <div className="flex h-screen bg-gray-100">
             {/* Sidebar */}
-            <div className={`${sidebarOpen ? 'w-64' : 'w-16'} bg-white shadow-lg transition-all duration-300 ease-in-out`}>
+            <div className={`${sidebarOpen ? 'w-48' : 'w-12'} bg-white shadow-lg transition-all duration-300 ease-in-out`}>
                 <div className="flex flex-col h-full">
                     {/* Header */}
                     <div className={`flex items-center p-4 border-b ${sidebarOpen ? 'justify-between' : 'flex-col space-y-2'}`}>
@@ -86,26 +80,7 @@ const Layout = ({ children }) => {
                             ))}
                         </div>
 
-                        {/* Social Platforms */}
-                        {sidebarOpen && (
-                            <div className="mt-8">
-                                <h3 className="text-sm font-semibold text-gray-500 mb-3 px-3">
-                                    SOCIAL PLATFORMS
-                                </h3>
-                                <div className="space-y-2">
-                                    {socialPlatforms.map((platform) => (
-                                        <div
-                                            key={platform.name}
-                                            className="flex items-center p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
-                                        >
-                                            <i className={`${platform.icon} w-5 h-5 ${platform.color}`}></i>
-                                            <span className="ml-3 text-sm text-gray-600">{platform.name}</span>
-                                            <div className="ml-auto w-2 h-2 bg-green-400 rounded-full"></div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+
                     </nav>
 
                     {/* Footer */}
@@ -139,31 +114,34 @@ const Layout = ({ children }) => {
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Top Header */}
-                <header className="bg-white shadow-sm border-b p-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-2xl font-semibold text-gray-800">
-                            Social Media Marketing Dashboard
-                        </h2>
-                        <div className="flex items-center space-x-4">
-                            <span className="text-sm text-gray-600">
-                                Welcome, {user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User'}!
-                            </span>
-                            <button className="p-2 rounded-lg hover:bg-gray-100">
-                                <i className="fas fa-bell text-gray-600"></i>
-                            </button>
-                            <button className="p-2 rounded-lg hover:bg-gray-100">
-                                <i className="fas fa-cog text-gray-600"></i>
-                            </button>
-                            <button
-                                onClick={signOut}
-                                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-red-600"
-                                title="Sign Out"
-                            >
-                                <i className="fas fa-sign-out-alt"></i>
-                            </button>
+                <div className="border-b border-gray-200">
+                    <header className="bg-gradient-to-r from-rose-100 via-white to-rose-50 shadow-sm p-3">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-semibold text-gray-800 flex items-center">
+                                <i className="fas fa-arrows-to-eye mr-3 text-purple-700 text-4xl"></i>
+                                Campaign Marketing Dashboard
+                            </h2>
+                            <div className="flex items-center space-x-4">
+                                <span className="text-sm text-gray-600">
+                                    Welcome, {user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User'}!
+                                </span>
+                                <button className="p-2 rounded-lg hover:bg-gray-100">
+                                    <i className="fas fa-bell text-gray-600"></i>
+                                </button>
+                                <button className="p-2 rounded-lg hover:bg-gray-100">
+                                    <i className="fas fa-cog text-gray-600"></i>
+                                </button>
+                                <button
+                                    onClick={signOut}
+                                    className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-red-600"
+                                    title="Sign Out"
+                                >
+                                    <i className="fas fa-sign-out-alt"></i>
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                </header>
+                    </header>
+                </div>
 
                 {/* Page Content */}
                 <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">

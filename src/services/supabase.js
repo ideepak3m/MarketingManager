@@ -14,5 +14,6 @@ export const TABLES = {
     CAMPAIGN_PHASES: 'campaign_phases',
     CONTENT: 'content',
     SOCIAL_METRICS: 'social_metrics',
-    POSTS: 'posts'
+    POSTS: 'posts',
+    CAMPAIGN_POSTS: 'campaign_posts'
 }

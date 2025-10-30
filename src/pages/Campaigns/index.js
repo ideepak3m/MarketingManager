@@ -6,13 +6,14 @@ import useCampaigns from './useCampaigns';
 import CampaignModal from './CampaignModal';
 import LaunchModal from './LaunchModal';
 import ConfirmTimelineModal from './ConfirmTimelineModal';
+import CampaignPostsGrid from './CampaignPostsGrid';
 
 const Campaigns = () => {
+    // Get campaigns from hook first (must be before any use of campaigns)
+    const { campaigns, loading, error, refetch } = useCampaigns();
     // Submenu state: 'active', 'draft', 'completed'
     const [submenu, setSubmenu] = useState('active');
 
-    // Get campaigns from hook first
-    const { campaigns, loading, error, refetch } = useCampaigns();
     // Filter campaigns by submenu
     const draftCampaigns = campaigns.filter(c => c.status && c.status.toLowerCase() === 'draft');
     const completedCampaigns = campaigns.filter(c => c.status && c.status.toLowerCase() === 'completed');
@@ -335,6 +336,20 @@ const Campaigns = () => {
                     onConfirm={handleConfirmLaunch}
                 />
             )}
+
+            {/* Campaign Posts Grid for planned campaigns */}
+            {campaigns.filter(c => c.status?.toLowerCase() === 'planned').map(campaign => (
+                <CampaignPostsGrid
+                    key={campaign.id}
+                    campaign={campaign}
+                    phases={campaign.phases || []}
+                    posts={campaign.posts || []}
+                    onUpload={(post, file, done) => {
+                        // TODO: Implement upload logic and update status to InProgress
+                        done();
+                    }}
+                />
+            ))}
         </div>
     );
 };
