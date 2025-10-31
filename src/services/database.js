@@ -1,6 +1,23 @@
 import { supabase, TABLES } from './supabase'
 // =============================================
 // CAMPAIGN POSTS OPERATIONS
+export const getCampaignPosts = async (userId, campaignId, platform) => {
+    try {
+        let query = supabase
+            .from(TABLES.CAMPAIGN_POSTS)
+            .select('*')
+            .eq('user_id', userId)
+            .eq('campaign_id', campaignId);
+        if (platform) {
+            query = query.eq('platform', platform);
+        }
+        const { data, error } = await query;
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        return { data: null, error };
+    }
+}
 // =============================================
 
 export const createCampaignPost = async (postData) => {
@@ -20,7 +37,32 @@ export const createCampaignPost = async (postData) => {
     }
 }
 
+// Add this function after createCampaignPost in database.js
 
+// Add this function after createCampaignPost in database.js
+
+export const updateCampaignPost = async (id, updates) => {
+    try {
+        console.log('Updating campaign_post:', id, updates);
+        const { data, error } = await supabase
+            .from(TABLES.CAMPAIGN_POSTS)
+            .update({
+                asset_url: updates.asset_url,
+                asset_name: updates.asset_name,
+                status: updates.status
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+        console.log('Update result:', { data, error });
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.log('Update error:', error);
+        return { data: null, error };
+    }
+}
 // ...existing code...
 
 // =============================================
