@@ -40,7 +40,7 @@ export default function CampaignPostsGrid({ campaign, phases, posts, onUpload, o
                         getPostsForPhase(phase.id).map((post, idx) => {
                             const captionsReady = hasCaptions(post);
                             const hasAsset = post.asset_url && post.asset_name;
-                            
+
                             return (
                                 <tr key={post.id} className="border-b hover:bg-gray-50">
                                     <td className="p-3">
@@ -96,9 +96,8 @@ export default function CampaignPostsGrid({ campaign, phases, posts, onUpload, o
                                             title="View/Edit Captions"
                                         >
                                             <span className="text-xl">⋮</span>
-                                            <span className={`w-2 h-2 rounded-full ${
-                                                captionsReady ? 'bg-green-500' : 'bg-gray-300'
-                                            }`}></span>
+                                            <span className={`w-2 h-2 rounded-full ${captionsReady ? 'bg-green-500' : 'bg-gray-300'
+                                                }`}></span>
                                         </button>
                                     </td>
                                 </tr>

@@ -327,6 +327,7 @@ const Campaigns = () => {
             {showConfirmModal && calculatedTimeline && (
                 <ConfirmTimelineModal
                     timeline={calculatedTimeline}
+                    campaign={launchingCampaign}
                     onClose={() => {
                         console.log('Going back to Launch Modal');
                         setShowConfirmModal(false);

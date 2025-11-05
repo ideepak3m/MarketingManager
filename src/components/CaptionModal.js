@@ -14,7 +14,7 @@ const CaptionModal = ({ post, onClose, onSave, onRefresh }) => {
     }, [post]);
 
     const handlePlatformChange = (platformId, field, value) => {
-        setPlatforms(prev => prev.map(p => 
+        setPlatforms(prev => prev.map(p =>
             p.id === platformId ? { ...p, [field]: value } : p
         ));
     };
@@ -22,7 +22,7 @@ const CaptionModal = ({ post, onClose, onSave, onRefresh }) => {
     const handleHashtagsChange = (platformId, value) => {
         // Convert comma-separated string to array
         const hashtagArray = value.split(',').map(tag => tag.trim()).filter(tag => tag);
-        setPlatforms(prev => prev.map(p => 
+        setPlatforms(prev => prev.map(p =>
             p.id === platformId ? { ...p, hashtags: hashtagArray } : p
         ));
     };
@@ -50,18 +50,18 @@ const CaptionModal = ({ post, onClose, onSave, onRefresh }) => {
 
         if (post.asset_type === 'video') {
             return (
-                <video 
-                    src={post.asset_url} 
-                    controls 
+                <video
+                    src={post.asset_url}
+                    controls
                     className="w-full h-64 object-contain rounded-lg bg-black"
                 />
             );
         }
 
         return (
-            <img 
-                src={post.asset_url} 
-                alt={post.asset_name} 
+            <img
+                src={post.asset_url}
+                alt={post.asset_name}
                 className="w-full h-64 object-contain rounded-lg bg-gray-100"
             />
         );
@@ -124,18 +124,17 @@ const CaptionModal = ({ post, onClose, onSave, onRefresh }) => {
 
                         <div className="space-y-4">
                             {platforms.map((platform) => (
-                                <div 
-                                    key={platform.id} 
+                                <div
+                                    key={platform.id}
                                     className="border rounded-lg p-4 bg-gray-50"
                                 >
                                     {/* Platform Header */}
                                     <div className="flex items-center gap-2 mb-3">
                                         <h4 className="font-semibold text-gray-800">{platform.platform}</h4>
-                                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                            platform.status === 'published' ? 'bg-green-100 text-green-800' :
-                                            platform.status === 'failed' ? 'bg-red-100 text-red-800' :
-                                            'bg-gray-200 text-gray-700'
-                                        }`}>
+                                        <span className={`px-2 py-1 rounded text-xs font-medium ${platform.status === 'published' ? 'bg-green-100 text-green-800' :
+                                                platform.status === 'failed' ? 'bg-red-100 text-red-800' :
+                                                    'bg-gray-200 text-gray-700'
+                                            }`}>
                                             {platform.status}
                                         </span>
                                     </div>
@@ -201,11 +200,10 @@ const CaptionModal = ({ post, onClose, onSave, onRefresh }) => {
                     <button
                         onClick={handleSave}
                         disabled={isGenerating}
-                        className={`px-6 py-2 rounded-lg text-white font-semibold transition-colors ${
-                            isGenerating 
-                                ? 'bg-gray-400 cursor-not-allowed' 
+                        className={`px-6 py-2 rounded-lg text-white font-semibold transition-colors ${isGenerating
+                                ? 'bg-gray-400 cursor-not-allowed'
                                 : 'bg-blue-600 hover:bg-blue-700'
-                        }`}
+                            }`}
                     >
                         {isGenerating ? 'Waiting for AI...' : 'Save Changes'}
                     </button>

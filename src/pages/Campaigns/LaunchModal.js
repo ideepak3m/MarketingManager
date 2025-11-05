@@ -18,7 +18,7 @@ const LaunchModal = ({ campaign, onClose, onTimelineCalculated }) => {
                 console.log('Fetching phases for user_id:', campaign.user_id);
                 const { data, error } = await supabase
                     .from('campaign_phases')
-                    .select('name, start_date, end_date, Phase_length, phase_order')
+                    .select('id, name, start_date, end_date, Phase_length, phase_order')
                     .eq('user_id', campaign.user_id)
                     .order('phase_order', { ascending: true });
 
@@ -74,6 +74,7 @@ const LaunchModal = ({ campaign, onClose, onTimelineCalculated }) => {
             phaseEnd.setDate(phaseEnd.getDate() + phaseLengthDays - 1);
 
             phaseTimings.push({
+                id: phase.id,  // Include phase ID
                 name: phase.name || `Phase ${idx + 1}`,
                 start: new Date(phaseStart),
                 end: new Date(phaseEnd),

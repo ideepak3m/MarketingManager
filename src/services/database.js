@@ -218,9 +218,9 @@ export const updateCampaignPost = async (id, updates) => {
 export const updatePlatformCaptions = async (platforms) => {
     try {
         console.log('Updating platform captions:', platforms);
-        
+
         // Update each platform entry
-        const updatePromises = platforms.map(platform => 
+        const updatePromises = platforms.map(platform =>
             supabase
                 .from(TABLES.CAMPAIGN_POST_PLATFORMS)
                 .update({
@@ -233,7 +233,7 @@ export const updatePlatformCaptions = async (platforms) => {
         );
 
         const results = await Promise.all(updatePromises);
-        
+
         // Check for errors
         const errors = results.filter(r => r.error);
         if (errors.length > 0) {
