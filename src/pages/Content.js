@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
-import { createCampaignPost, getCampaignPosts, updateCampaignPost } from '../services/database';
+import { createCampaignPost, getCampaignPosts, updateCampaignPost, updatePlatformCaptions } from '../services/database';
 import CampaignPostsGrid from './Campaigns/CampaignPostsGrid';
+import CaptionModal from '../components/CaptionModal';
 import useCampaigns from './Campaigns/useCampaigns';
 import { useAuth } from '../context/AuthContext';
 
 const Content = () => {
     const [showGrid, setShowGrid] = useState(false);
-    const [showModal, setShowModal] = useState(false);
-    const [mediaChosen, setMediaChosen] = useState({}); // { postId: true }
-    const [pendingFileNames, setPendingFileNames] = useState({}); // { postId: fileName }
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [showCaptionModal, setShowCaptionModal] = useState(false);
+    const [selectedPost, setSelectedPost] = useState(null);
     const [dbPosts, setDbPosts] = useState([]); // posts from DB
-    const mediaFilesRef = useRef({}); // { postId: File }
     const { campaigns } = useCampaigns();
     const { user } = useAuth();
     const plannedCampaigns = campaigns.filter(c => c.status?.toLowerCase() === 'planned');
@@ -46,120 +46,74 @@ const Content = () => {
     const selectedCampaign = plannedCampaigns.find(c => c.id === selectedCampaignId);
     const campaignPlatforms = selectedCampaign?.platforms || [];
 
-    // Generate grid posts with DB data merged in
-    const generateGridPosts = () => {
-        if (!selectedCampaign) return [];
-
-        const gridPosts = [];
-        (selectedCampaign.phases || []).forEach(phase => {
-            const start = phase.start_date ? new Date(phase.start_date) : null;
-            const end = phase.end_date ? new Date(phase.end_date) : null;
-            if (!start || !end) return;
-
-            const days = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
-            const weeks = Math.ceil(days / 7);
-
-            for (let w = 0; w < weeks; w++) {
-                for (let p = 0; p < 3; p++) {
-                    const scheduled = new Date(start.getTime() + (w * 7 + p * 2) * 24 * 60 * 60 * 1000);
-                    if (scheduled > end) break;
-
-                    // Try to find matching DB post by phase and date (regardless of platform)
-                    const dbMatch = dbPosts.find(dbPost => {
-                        if (dbPost.campaign_phase_id !== phase.id) return false;
-
-                        const dbDate = new Date(dbPost.scheduled_time);
-                        // Compare dates only (ignore time) by converting to date strings
-                        const dbDateStr = dbDate.toISOString().split('T')[0];
-                        const scheduledDateStr = scheduled.toISOString().split('T')[0];
-                        return dbDateStr === scheduledDateStr;
-                    });
-
-                    gridPosts.push({
-                        id: `${phase.id}-${w}-${p}`,
-                        campaign_phase_id: phase.id,
-                        scheduled_time: scheduled,
-                        phase_name: phase.name,
-                        platforms: dbMatch?.platforms || [], // Array of platform objects
-                        file_name: pendingFileNames[`${phase.id}-${w}-${p}`] || dbMatch?.asset_name || '',
-                        status: dbMatch?.platforms?.length > 0 ? 'Uploaded' : 'Pending',
-                        isUploaded: !!dbMatch,
-                        db_id: dbMatch?.id || null
-                    });
-                }
-            }
-        });
-
-        console.log('Generated grid posts:', gridPosts);
-        return gridPosts;
+    // Handler to show caption modal
+    const handleShowCaptionModal = (post) => {
+        setSelectedPost(post);
+        setShowCaptionModal(true);
     };
 
-    const handleUploadAll = async () => {
-        if (Object.keys(mediaChosen).length === 0) return;
-
-        setShowModal(true);
+    // Handler to save caption changes
+    const handleSaveCaptions = async (platforms) => {
         try {
-            const gridPosts = generateGridPosts();
-            const postsToUpload = Object.keys(mediaChosen);
+            await updatePlatformCaptions(platforms);
+            // Refresh posts to show updated captions
+            await fetchDbPosts();
+        } catch (error) {
+            console.error('Error saving captions:', error);
+        }
+    };
 
-            for (const postId of postsToUpload) {
-                const file = mediaFilesRef.current[postId];
-                if (!file) continue;
+    // Handler to refresh caption data (for AI check)
+    const handleRefreshCaptions = async () => {
+        await fetchDbPosts();
+        // Update the selected post with fresh data
+        if (selectedPost) {
+            const updatedPost = dbPosts.find(p => p.id === selectedPost.id);
+            if (updatedPost) {
+                setSelectedPost(updatedPost);
+            }
+        }
+    };
 
-                const gridPost = gridPosts.find(p => p.id === postId);
-                if (!gridPost) continue;
+    // Handler for file upload
+    const handleFileUpload = async (post, file) => {
+        setShowUploadModal(true);
+        try {
+            const filePath = `${user.id}/${selectedCampaignId}/${post.id}-${Date.now()}-${file.name}`;
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('campaign-media')
+                .upload(filePath, file);
 
-                // Upload to storage (no platform-specific path)
-                const filePath = `${user.id}/${selectedCampaignId}/${postId}-${Date.now()}-${file.name}`;
-                const { data: uploadData, error: uploadError } = await supabase.storage
+            let assetUrl = '';
+            if (uploadData && !uploadError) {
+                const { data: publicUrlData } = supabase.storage
                     .from('campaign-media')
-                    .upload(filePath, file);
-
-                let assetUrl = '';
-                if (uploadData && !uploadError) {
-                    const { data: publicUrlData } = supabase.storage
-                        .from('campaign-media')
-                        .getPublicUrl(filePath);
-                    assetUrl = publicUrlData?.publicUrl || '';
-                }
-
-                // Check if this is an update or insert
-                if (gridPost.isUploaded && gridPost.db_id) {
-                    // UPDATE existing record (only update asset info, not platforms)
-                    console.log('UPDATING post:', gridPost.db_id, 'with file:', file.name);
-                    const { data: updateData, error: updateError } = await updateCampaignPost(gridPost.db_id, {
-                        asset_url: assetUrl,
-                        asset_name: file.name,
-                        asset_type: file.type.startsWith('video') ? 'video' : 'image'
-                    });
-                    console.log('Update result:', { updateData, updateError });
-                } else {
-                    // INSERT new record with platforms auto-created
-                    console.log('INSERTING new post for:', postId, 'with platforms:', campaignPlatforms);
-                    await createCampaignPost({
-                        user_id: user.id,
-                        campaign_id: selectedCampaignId,
-                        campaign_phase_id: gridPost.campaign_phase_id,
-                        scheduled_time: gridPost.scheduled_time.toISOString(),
-                        asset_url: assetUrl,
-                        asset_name: file.name,
-                        asset_type: file.type.startsWith('video') ? 'video' : 'image',
-                        caption: '',
-                        status: uploadError ? 'failed' : 'pending'
-                    }, campaignPlatforms); // Pass platforms array
-                }
+                    .getPublicUrl(filePath);
+                assetUrl = publicUrlData?.publicUrl || '';
             }
 
-            // Refresh DB posts and clear selections
-            await fetchDbPosts();
-            setMediaChosen({});
-            setPendingFileNames({});
-            mediaFilesRef.current = {};
+            // Update the post with asset info
+            if (post.id) {
+                await updateCampaignPost(post.id, {
+                    asset_url: assetUrl,
+                    asset_name: file.name,
+                    asset_type: file.type.startsWith('video') ? 'video' : 'image'
+                });
+            }
 
+            // Refresh posts
+            await fetchDbPosts();
+
+            // Open caption modal after upload
+            const updatedPost = dbPosts.find(p => p.id === post.id);
+            if (updatedPost) {
+                setShowUploadModal(false);
+                handleShowCaptionModal(updatedPost);
+            }
         } catch (err) {
             console.error('Upload error:', err);
         } finally {
-            setShowModal(false);
+            setShowUploadModal(false);
         }
     };
 
@@ -205,44 +159,46 @@ const Content = () => {
                     >
                         {showGrid ? 'Hide Grid' : 'Show Grid'}
                     </button>
-                    {showGrid && (
-                        <button
-                            className={`px-4 py-2 rounded font-semibold transition-colors text-white ${Object.keys(mediaChosen).length > 0
-                                ? 'bg-green-600 hover:bg-green-700'
-                                : 'bg-gray-400 cursor-not-allowed'
-                                }`}
-                            disabled={Object.keys(mediaChosen).length === 0}
-                            onClick={handleUploadAll}
-                        >
-                            Upload All ({Object.keys(mediaChosen).length})
-                        </button>
-                    )}
                 </div>
 
-                {selectedCampaign && showGrid && (
+                {selectedCampaign && showGrid && dbPosts.length > 0 && (
                     <CampaignPostsGrid
-                        key={selectedCampaign.id}
+                        key={selectedCampaignId}
                         campaign={selectedCampaign}
                         phases={selectedCampaign.phases || []}
-                        posts={generateGridPosts()}
-                        pendingFileNames={pendingFileNames}
-                        onUpload={(post, file, done) => {
-                            setMediaChosen(prev => ({ ...prev, [post.id]: true }));
-                            setPendingFileNames(prev => ({ ...prev, [post.id]: file.name }));
-                            mediaFilesRef.current[post.id] = file;
-                            done();
-                        }}
+                        posts={dbPosts}
+                        onUpload={handleFileUpload}
+                        onShowCaptionModal={handleShowCaptionModal}
                     />
                 )}
 
-                {showModal && (
+                {selectedCampaign && showGrid && dbPosts.length === 0 && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-center">
+                        <i className="fas fa-info-circle text-amber-600 text-3xl mb-3"></i>
+                        <p className="text-amber-800 font-semibold">No posts found for this campaign.</p>
+                        <p className="text-amber-700 text-sm mt-2">
+                            Please launch the campaign first to generate the content schedule.
+                        </p>
+                    </div>
+                )}
+
+                {showUploadModal && (
                     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
                         <div className="bg-white rounded-lg shadow-lg p-8 flex flex-col items-center">
                             <i className="fas fa-spinner fa-spin text-4xl text-blue-600 mb-4"></i>
-                            <div className="text-lg font-semibold text-gray-700 mb-2">Uploading files...</div>
-                            <div className="text-gray-500 text-sm">Please wait while your files are being uploaded.</div>
+                            <div className="text-lg font-semibold text-gray-700 mb-2">Uploading file...</div>
+                            <div className="text-gray-500 text-sm">Please wait while your file is being uploaded.</div>
                         </div>
                     </div>
+                )}
+
+                {showCaptionModal && selectedPost && (
+                    <CaptionModal
+                        post={selectedPost}
+                        onClose={() => setShowCaptionModal(false)}
+                        onSave={handleSaveCaptions}
+                        onRefresh={handleRefreshCaptions}
+                    />
                 )}
             </div>
         </div>

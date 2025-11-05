@@ -84,6 +84,50 @@ export const getCampaignPostsByPhase = async (userId, campaignPhaseId, platform 
 }
 
 /**
+ * Bulk create campaign posts (for campaign launch)
+ * @param {Array} postsData - Array of post objects
+ * @returns {Object} { data, error }
+ */
+export const bulkCreateCampaignPosts = async (postsData) => {
+    try {
+        console.log('Bulk creating campaign posts:', postsData.length);
+
+        const { data, error } = await supabase
+            .from(TABLES.CAMPAIGN_POSTS)
+            .insert(postsData)
+            .select();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.error('Bulk create campaign posts error:', error);
+        return { data: null, error };
+    }
+}
+
+/**
+ * Bulk create platform entries for posts
+ * @param {Array} platformEntries - Array of platform entry objects
+ * @returns {Object} { data, error }
+ */
+export const bulkCreatePlatformEntries = async (platformEntries) => {
+    try {
+        console.log('Bulk creating platform entries:', platformEntries.length);
+
+        const { data, error } = await supabase
+            .from(TABLES.CAMPAIGN_POST_PLATFORMS)
+            .insert(platformEntries)
+            .select();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.error('Bulk create platform entries error:', error);
+        return { data: null, error };
+    }
+}
+
+/**
  * Create a campaign post with platforms
  * @param {Object} postData - Post data
  * @param {Array} platforms - Array of platform names to publish to
@@ -163,6 +207,44 @@ export const updateCampaignPost = async (id, updates) => {
         return { data, error: null };
     } catch (error) {
         console.error('Update campaign post error:', error);
+        return { data: null, error };
+    }
+}
+
+/**
+ * Update multiple platform entries (for caption modal save)
+ * @param {Array} platforms - Array of platform objects with id, platform_caption, hashtags
+ */
+export const updatePlatformCaptions = async (platforms) => {
+    try {
+        console.log('Updating platform captions:', platforms);
+        
+        // Update each platform entry
+        const updatePromises = platforms.map(platform => 
+            supabase
+                .from(TABLES.CAMPAIGN_POST_PLATFORMS)
+                .update({
+                    platform_caption: platform.platform_caption,
+                    hashtags: platform.hashtags
+                })
+                .eq('id', platform.id)
+                .select()
+                .single()
+        );
+
+        const results = await Promise.all(updatePromises);
+        
+        // Check for errors
+        const errors = results.filter(r => r.error);
+        if (errors.length > 0) {
+            console.error('Some platform updates failed:', errors);
+            return { data: null, error: errors[0].error };
+        }
+
+        const data = results.map(r => r.data);
+        return { data, error: null };
+    } catch (error) {
+        console.error('Update platform captions error:', error);
         return { data: null, error };
     }
 }
