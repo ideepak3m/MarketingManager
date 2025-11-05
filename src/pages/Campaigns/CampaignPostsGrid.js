@@ -8,6 +8,15 @@ export default function CampaignPostsGrid({ campaign, phases, posts, onUpload, o
 
     const getPostsForPhase = (phaseId) => posts.filter(p => p.campaign_phase_id === phaseId);
 
+    // Format date from ISO string without timezone conversion
+    const formatScheduledDate = (isoString) => {
+        if (!isoString) return '-';
+        // Parse the date and format as local date (ignoring timezone)
+        const date = new Date(isoString);
+        // Use UTC methods to avoid timezone shifts
+        return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()).toLocaleDateString();
+    };
+
     // Check if post has AI-generated captions
     const hasCaptions = (post) => {
         return post.platforms?.some(p => p.platform_caption && p.platform_caption.length > 0) || false;
@@ -44,7 +53,7 @@ export default function CampaignPostsGrid({ campaign, phases, posts, onUpload, o
                             return (
                                 <tr key={post.id} className="border-b hover:bg-gray-50">
                                     <td className="p-3">
-                                        {post.scheduled_time ? new Date(post.scheduled_time).toLocaleDateString() : '-'}
+                                        {formatScheduledDate(post.scheduled_time)}
                                     </td>
                                     <td className="p-3">{phase.name}</td>
                                     <td className="p-3">{idx + 1}</td>

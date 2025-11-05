@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { bulkCreateCampaignPosts, bulkCreatePlatformEntries } from '../../services/database';
+import { useAuth } from '../../context/AuthContext';
 
 const ConfirmTimelineModal = ({ timeline, campaign, onClose, onConfirm }) => {
+    const { user } = useAuth();
     const [isProcessing, setIsProcessing] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
@@ -24,7 +26,29 @@ const ConfirmTimelineModal = ({ timeline, campaign, onClose, onConfirm }) => {
         const posts = [];
         const platforms = campaign.platforms || [];
 
+        // Use authenticated user's ID
+        const userId = user?.id;
+
+        console.log('=== GENERATING POST SCHEDULE ===');
+        console.log('Authenticated user ID:', userId);
+        console.log('Campaign user_id:', campaign.user_id);
+        console.log('Campaign:', campaign.id, campaign.name);
+        console.log('Timeline campaignId:', timeline.campaignId);
+        console.log('Timeline phases:', timeline.phases);
+
+        if (!userId) {
+            console.error('No authenticated user found!');
+            return [];
+        }
+
         timeline.phases.forEach((phase, phaseIdx) => {
+            console.log(`Processing phase ${phaseIdx}:`, phase.name, 'ID:', phase.id);
+
+            if (!phase.id) {
+                console.error(`Phase ${phaseIdx} (${phase.name}) is missing ID!`);
+                return; // Skip this phase
+            }
+
             const start = new Date(phase.start);
             const end = new Date(phase.end);
             const days = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
@@ -36,26 +60,33 @@ const ConfirmTimelineModal = ({ timeline, campaign, onClose, onConfirm }) => {
                     const scheduled = new Date(start.getTime() + (w * 7 + p * 2) * 24 * 60 * 60 * 1000);
                     if (scheduled > end) break;
 
+                    // Format as YYYY-MM-DD to avoid timezone issues
+                    const year = scheduled.getFullYear();
+                    const month = String(scheduled.getMonth() + 1).padStart(2, '0');
+                    const day = String(scheduled.getDate()).padStart(2, '0');
+                    const dateString = `${year}-${month}-${day}T12:00:00.000Z`; // Noon UTC to avoid timezone shifts
+
                     posts.push({
-                        user_id: campaign.user_id,
+                        user_id: userId, // Use authenticated user ID
                         campaign_id: timeline.campaignId,
-                        campaign_phase_id: phase.id || `phase-${phaseIdx}`, // Will need actual phase ID
-                        scheduled_time: scheduled.toISOString(),
+                        campaign_phase_id: phase.id,
+                        scheduled_time: dateString,
                         asset_url: null,
                         asset_name: null,
-                        asset_type: 'image',
+                        asset_type: null, // Null until asset is uploaded
                         caption: null
                     });
                 }
             }
         });
 
+        console.log(`Generated ${posts.length} posts`);
         return posts;
     };
 
     const handleConfirmLaunch = async () => {
         setIsProcessing(true);
-        
+
         try {
             // Step 1: Call original onConfirm to update campaign/phase dates
             await onConfirm();
@@ -63,13 +94,25 @@ const ConfirmTimelineModal = ({ timeline, campaign, onClose, onConfirm }) => {
             // Step 2: Generate post schedule
             const posts = generatePostSchedule();
             console.log('Generated posts:', posts.length);
+            console.log('First post sample:', posts[0]);
+            console.log('Timeline phases:', timeline.phases);
+
+            // Validate posts have phase IDs
+            const invalidPosts = posts.filter(p => !p.campaign_phase_id);
+            if (invalidPosts.length > 0) {
+                console.error('Posts missing campaign_phase_id:', invalidPosts);
+                alert(`Error: ${invalidPosts.length} posts are missing phase IDs. Please check console.`);
+                setIsProcessing(false);
+                return;
+            }
 
             // Step 3: Bulk insert campaign_posts
             const { data: createdPosts, error: postsError } = await bulkCreateCampaignPosts(posts);
-            
+
             if (postsError) {
                 console.error('Error creating posts:', postsError);
-                alert('Failed to create campaign posts. Please try again.');
+                console.error('Error details:', JSON.stringify(postsError, null, 2));
+                alert(`Failed to create campaign posts: ${postsError.message || 'Unknown error'}. Please check console.`);
                 setIsProcessing(false);
                 return;
             }
@@ -79,12 +122,13 @@ const ConfirmTimelineModal = ({ timeline, campaign, onClose, onConfirm }) => {
             // Step 4: Create platform entries for each post
             const platformEntries = [];
             const platforms = campaign.platforms || [];
-            
+            const userId = user?.id; // Use authenticated user ID
+
             createdPosts.forEach(post => {
                 platforms.forEach(platform => {
                     platformEntries.push({
                         campaign_post_id: post.id,
-                        user_id: campaign.user_id,
+                        user_id: userId, // Use authenticated user ID
                         platform: platform,
                         platform_caption: null, // Will be filled by AI
                         hashtags: [],
@@ -94,7 +138,7 @@ const ConfirmTimelineModal = ({ timeline, campaign, onClose, onConfirm }) => {
             });
 
             const { error: platformsError } = await bulkCreatePlatformEntries(platformEntries);
-            
+
             if (platformsError) {
                 console.error('Error creating platform entries:', postsError);
                 // Don't fail - posts are created, platforms can be fixed later
@@ -125,7 +169,7 @@ const ConfirmTimelineModal = ({ timeline, campaign, onClose, onConfirm }) => {
 
             // Step 6: Show success modal
             setShowSuccessModal(true);
-            
+
         } catch (error) {
             console.error('Launch error:', error);
             alert('Failed to launch campaign. Please try again.');
@@ -147,7 +191,7 @@ const ConfirmTimelineModal = ({ timeline, campaign, onClose, onConfirm }) => {
                             AI is generating captions and hashtags for your posts.
                         </p>
                     </div>
-                    
+
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                         <div className="flex items-center justify-center gap-2 text-blue-700">
                             <i className="fas fa-robot"></i>

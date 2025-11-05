@@ -123,8 +123,8 @@ const LaunchModal = ({ campaign, onClose, onTimelineCalculated }) => {
                 <input
                     type="date"
                     className={`border-2 rounded-lg px-4 py-3 w-full mb-4 focus:outline-none focus:ring-2 transition-all ${!localLaunchDate
-                            ? 'border-gray-300 bg-gray-50 focus:ring-purple-200 focus:border-purple-400'
-                            : 'border-green-400 bg-green-50 focus:ring-green-200'
+                        ? 'border-gray-300 bg-gray-50 focus:ring-purple-200 focus:border-purple-400'
+                        : 'border-green-400 bg-green-50 focus:ring-green-200'
                         }`}
                     value={localLaunchDate}
                     onChange={e => setLocalLaunchDate(e.target.value)}

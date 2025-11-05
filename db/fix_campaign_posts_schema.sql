@@ -29,7 +29,7 @@ CREATE TABLE public.campaign_posts (
     -- Asset information (common across all platforms)
     asset_url TEXT,              -- URL to uploaded media in Supabase Storage
     asset_name TEXT,             -- Original filename
-    asset_type TEXT DEFAULT 'image', -- 'image', 'video', 'carousel', 'document'
+    asset_type TEXT,             -- 'image', 'video', 'carousel', 'document' - null until asset uploaded
     
     -- Base content (can be customized per platform in campaign_post_platforms)
     caption TEXT,                -- Default caption for all platforms
