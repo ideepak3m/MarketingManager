@@ -54,6 +54,8 @@ const ConfirmTimelineModal = ({ timeline, campaign, onClose, onConfirm }) => {
             const days = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
             const weeks = Math.ceil(days / 7);
 
+            let postNumberInPhase = 1; // Track post number within this phase
+
             // Generate 3 posts per week
             for (let w = 0; w < weeks; w++) {
                 for (let p = 0; p < 3; p++) {
@@ -70,6 +72,7 @@ const ConfirmTimelineModal = ({ timeline, campaign, onClose, onConfirm }) => {
                         user_id: userId, // Use authenticated user ID
                         campaign_id: timeline.campaignId,
                         campaign_phase_id: phase.id,
+                        post_number: postNumberInPhase++, // Sequential number within phase
                         scheduled_time: dateString,
                         asset_url: null,
                         asset_name: null,

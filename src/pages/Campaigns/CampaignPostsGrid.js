@@ -56,7 +56,7 @@ export default function CampaignPostsGrid({ campaign, phases, posts, onUpload, o
                                         {formatScheduledDate(post.scheduled_time)}
                                     </td>
                                     <td className="p-3">{phase.name}</td>
-                                    <td className="p-3">{idx + 1}</td>
+                                    <td className="p-3">{post.post_number || (idx + 1)}</td>
                                     <td className="p-3">
                                         {hasAsset ? (
                                             <>

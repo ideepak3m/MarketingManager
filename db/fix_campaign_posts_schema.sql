@@ -23,6 +23,9 @@ CREATE TABLE public.campaign_posts (
     campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
     campaign_phase_id UUID NOT NULL REFERENCES campaign_phases(id) ON DELETE CASCADE,
     
+    -- Post identification
+    post_number INTEGER NOT NULL,  -- Sequential number within the phase (1, 2, 3, etc.)
+    
     -- Scheduling
     scheduled_time TIMESTAMP WITH TIME ZONE NOT NULL,
     
