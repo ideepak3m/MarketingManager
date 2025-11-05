@@ -1,46 +1,149 @@
 import { supabase, TABLES } from './supabase'
+
 // =============================================
-// CAMPAIGN POSTS OPERATIONS
-export const getCampaignPosts = async (userId, campaignId, platform) => {
+// CAMPAIGN POSTS OPERATIONS (New Multi-Platform Schema)
+// =============================================
+
+/**
+ * Get campaign posts with platform details
+ * @param {string} userId - User ID
+ * @param {string} campaignId - Campaign ID
+ * @param {string} platform - Optional platform filter
+ * @returns {Object} { data, error }
+ */
+export const getCampaignPosts = async (userId, campaignId, platform = null) => {
+    try {
+        // Query campaign_posts with nested platform details
+        let query = supabase
+            .from(TABLES.CAMPAIGN_POSTS)
+            .select(`
+                *,
+                platforms:campaign_post_platforms(*)
+            `)
+            .eq('user_id', userId)
+            .eq('campaign_id', campaignId)
+            .order('scheduled_time', { ascending: true });
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        // If platform filter is specified, filter the results
+        if (platform && data) {
+            return {
+                data: data.map(post => ({
+                    ...post,
+                    platforms: post.platforms.filter(p => p.platform === platform)
+                })).filter(post => post.platforms.length > 0),
+                error: null
+            };
+        }
+
+        return { data, error: null };
+    } catch (error) {
+        console.error('Get campaign posts error:', error);
+        return { data: null, error };
+    }
+}
+
+/**
+ * Get posts with platforms for a specific phase
+ * @param {string} userId - User ID
+ * @param {string} campaignPhaseId - Campaign Phase ID
+ * @param {string} platform - Optional platform filter
+ */
+export const getCampaignPostsByPhase = async (userId, campaignPhaseId, platform = null) => {
     try {
         let query = supabase
             .from(TABLES.CAMPAIGN_POSTS)
-            .select('*')
+            .select(`
+                *,
+                platforms:campaign_post_platforms(*)
+            `)
             .eq('user_id', userId)
-            .eq('campaign_id', campaignId);
-        if (platform) {
-            query = query.eq('platform', platform);
-        }
+            .eq('campaign_phase_id', campaignPhaseId)
+            .order('scheduled_time', { ascending: true });
+
         const { data, error } = await query;
         if (error) throw error;
+
+        if (platform && data) {
+            return {
+                data: data.map(post => ({
+                    ...post,
+                    platforms: post.platforms.filter(p => p.platform === platform)
+                })).filter(post => post.platforms.length > 0),
+                error: null
+            };
+        }
+
         return { data, error: null };
     } catch (error) {
+        console.error('Get campaign posts by phase error:', error);
         return { data: null, error };
     }
 }
-// =============================================
 
-export const createCampaignPost = async (postData) => {
+/**
+ * Create a campaign post with platforms
+ * @param {Object} postData - Post data
+ * @param {Array} platforms - Array of platform names to publish to
+ */
+export const createCampaignPost = async (postData, platforms = []) => {
     try {
-        console.log('Inserting into campaign_posts:', postData);
-        const { data, error } = await supabase
+        console.log('Creating campaign post:', postData, 'for platforms:', platforms);
+
+        // Insert the main campaign post
+        const { data: post, error: postError } = await supabase
             .from(TABLES.CAMPAIGN_POSTS)
-            .insert([postData])
+            .insert([{
+                user_id: postData.user_id,
+                campaign_id: postData.campaign_id,
+                campaign_phase_id: postData.campaign_phase_id,
+                scheduled_time: postData.scheduled_time,
+                asset_url: postData.asset_url,
+                asset_name: postData.asset_name,
+                asset_type: postData.asset_type || 'image',
+                caption: postData.caption || ''
+            }])
             .select()
             .single();
-        console.log('Insert result:', { data, error });
-        if (error) throw error;
-        return { data, error: null };
+
+        if (postError) throw postError;
+
+        // Insert platform entries if platforms array is provided
+        if (platforms.length > 0) {
+            const platformEntries = platforms.map(platform => ({
+                campaign_post_id: post.id,
+                user_id: postData.user_id,
+                platform: platform,
+                platform_caption: postData.caption || '',
+                hashtags: postData.hashtags || [],
+                status: postData.status || 'pending'
+            }));
+
+            const { data: platformData, error: platformError } = await supabase
+                .from(TABLES.CAMPAIGN_POST_PLATFORMS)
+                .insert(platformEntries)
+                .select();
+
+            if (platformError) {
+                console.error('Platform insert error:', platformError);
+                // Don't throw - post was created, just platforms failed
+            }
+
+            return { data: { ...post, platforms: platformData }, error: null };
+        }
+
+        return { data: post, error: null };
     } catch (error) {
-        console.log('Insert error:', error);
+        console.error('Create campaign post error:', error);
         return { data: null, error };
     }
 }
 
-// Add this function after createCampaignPost in database.js
-
-// Add this function after createCampaignPost in database.js
-
+/**
+ * Update campaign post (asset info)
+ */
 export const updateCampaignPost = async (id, updates) => {
     try {
         console.log('Updating campaign_post:', id, updates);
@@ -49,20 +152,99 @@ export const updateCampaignPost = async (id, updates) => {
             .update({
                 asset_url: updates.asset_url,
                 asset_name: updates.asset_name,
-                status: updates.status
+                asset_type: updates.asset_type,
+                caption: updates.caption
             })
             .eq('id', id)
             .select()
             .single();
 
-        console.log('Update result:', { data, error });
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
-        console.log('Update error:', error);
+        console.error('Update campaign post error:', error);
         return { data: null, error };
     }
 }
+
+/**
+ * Add platform to existing post
+ */
+export const addPlatformToPost = async (campaignPostId, userId, platformData) => {
+    try {
+        const { data, error } = await supabase
+            .from(TABLES.CAMPAIGN_POST_PLATFORMS)
+            .insert([{
+                campaign_post_id: campaignPostId,
+                user_id: userId,
+                platform: platformData.platform,
+                platform_caption: platformData.caption,
+                hashtags: platformData.hashtags || [],
+                status: 'pending'
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.error('Add platform to post error:', error);
+        return { data: null, error };
+    }
+}
+
+/**
+ * Update platform entry (for n8n after publishing)
+ */
+export const updatePlatformEntry = async (platformEntryId, updates) => {
+    try {
+        const { data, error } = await supabase
+            .from(TABLES.CAMPAIGN_POST_PLATFORMS)
+            .update({
+                status: updates.status,
+                platform_post_id: updates.platform_post_id,
+                platform_url: updates.platform_url,
+                published_at: updates.published_at,
+                error_message: updates.error_message,
+                retry_count: updates.retry_count,
+                last_retry_at: updates.last_retry_at
+            })
+            .eq('id', platformEntryId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.error('Update platform entry error:', error);
+        return { data: null, error };
+    }
+}
+
+/**
+ * Get posts ready to publish (for n8n workflow)
+ */
+export const getPostsReadyToPublish = async () => {
+    try {
+        const { data, error } = await supabase
+            .from(TABLES.CAMPAIGN_POST_PLATFORMS)
+            .select(`
+                *,
+                post:campaign_posts(*)
+            `)
+            .eq('status', 'pending')
+            .lte('post.scheduled_time', new Date().toISOString())
+            .lt('retry_count', 3)
+            .order('post.scheduled_time', { ascending: true });
+
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        console.error('Get posts ready to publish error:', error);
+        return { data: null, error };
+    }
+}
+
 // ...existing code...
 
 // =============================================

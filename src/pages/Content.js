@@ -5,12 +5,7 @@ import CampaignPostsGrid from './Campaigns/CampaignPostsGrid';
 import useCampaigns from './Campaigns/useCampaigns';
 import { useAuth } from '../context/AuthContext';
 
-const PLATFORMS = [
-    'Facebook', 'Instagram', 'Pinterest', 'TikTok', 'LinkedIn', 'Reddit', 'WhatsApp', 'Email', 'PrintMedia'
-];
-
 const Content = () => {
-    const [selectedPlatform, setSelectedPlatform] = useState(PLATFORMS[0]);
     const [showGrid, setShowGrid] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [mediaChosen, setMediaChosen] = useState({}); // { postId: true }
@@ -31,14 +26,15 @@ const Content = () => {
     // Fetch campaign posts from DB
     useEffect(() => {
         fetchDbPosts();
-    }, [user?.id, selectedCampaignId, selectedPlatform]);
+    }, [user?.id, selectedCampaignId]);
 
     async function fetchDbPosts() {
-        if (!user?.id || !selectedCampaignId || !selectedPlatform) {
+        if (!user?.id || !selectedCampaignId) {
             setDbPosts([]);
             return;
         }
-        const { data, error } = await getCampaignPosts(user.id, selectedCampaignId, selectedPlatform);
+        // Fetch all posts with all platforms (no platform filter)
+        const { data, error } = await getCampaignPosts(user.id, selectedCampaignId);
         console.log('DB Posts fetched:', data);
         if (!error && Array.isArray(data)) {
             setDbPosts(data);
@@ -48,6 +44,7 @@ const Content = () => {
     }
 
     const selectedCampaign = plannedCampaigns.find(c => c.id === selectedCampaignId);
+    const campaignPlatforms = selectedCampaign?.platforms || [];
 
     // Generate grid posts with DB data merged in
     const generateGridPosts = () => {
@@ -67,10 +64,9 @@ const Content = () => {
                     const scheduled = new Date(start.getTime() + (w * 7 + p * 2) * 24 * 60 * 60 * 1000);
                     if (scheduled > end) break;
 
-                    // Try to find matching DB post by phase and date
+                    // Try to find matching DB post by phase and date (regardless of platform)
                     const dbMatch = dbPosts.find(dbPost => {
                         if (dbPost.campaign_phase_id !== phase.id) return false;
-                        if (dbPost.platform !== selectedPlatform) return false;
 
                         const dbDate = new Date(dbPost.scheduled_time);
                         // Compare dates only (ignore time) by converting to date strings
@@ -84,9 +80,9 @@ const Content = () => {
                         campaign_phase_id: phase.id,
                         scheduled_time: scheduled,
                         phase_name: phase.name,
-                        platform: selectedPlatform,
+                        platforms: dbMatch?.platforms || [], // Array of platform objects
                         file_name: pendingFileNames[`${phase.id}-${w}-${p}`] || dbMatch?.asset_name || '',
-                        status: dbMatch?.status || 'Pending',
+                        status: dbMatch?.platforms?.length > 0 ? 'Uploaded' : 'Pending',
                         isUploaded: !!dbMatch,
                         db_id: dbMatch?.id || null
                     });
@@ -113,43 +109,44 @@ const Content = () => {
                 const gridPost = gridPosts.find(p => p.id === postId);
                 if (!gridPost) continue;
 
-                // Upload to storage
-                const filePath = `${user.id}/${selectedCampaignId}/${selectedPlatform}/${postId}-${Date.now()}-${file.name}`;
+                // Upload to storage (no platform-specific path)
+                const filePath = `${user.id}/${selectedCampaignId}/${postId}-${Date.now()}-${file.name}`;
                 const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('campaign-media')
                     .upload(filePath, file);
 
                 let assetUrl = '';
                 if (uploadData && !uploadError) {
-                    const { data: signedUrlData } = await supabase.storage
+                    const { data: publicUrlData } = supabase.storage
                         .from('campaign-media')
-                        .createSignedUrl(filePath, 60 * 60 * 24 * 365);
-                    assetUrl = signedUrlData?.signedUrl || '';
+                        .getPublicUrl(filePath);
+                    assetUrl = publicUrlData?.publicUrl || '';
                 }
 
                 // Check if this is an update or insert
                 if (gridPost.isUploaded && gridPost.db_id) {
-                    // UPDATE existing record
+                    // UPDATE existing record (only update asset info, not platforms)
                     console.log('UPDATING post:', gridPost.db_id, 'with file:', file.name);
                     const { data: updateData, error: updateError } = await updateCampaignPost(gridPost.db_id, {
                         asset_url: assetUrl,
                         asset_name: file.name,
-                        status: uploadError ? 'Error' : 'Uploaded'
+                        asset_type: file.type.startsWith('video') ? 'video' : 'image'
                     });
                     console.log('Update result:', { updateData, updateError });
                 } else {
-                    // INSERT new record
-                    console.log('INSERTING new post for:', postId);
+                    // INSERT new record with platforms auto-created
+                    console.log('INSERTING new post for:', postId, 'with platforms:', campaignPlatforms);
                     await createCampaignPost({
                         user_id: user.id,
                         campaign_id: selectedCampaignId,
                         campaign_phase_id: gridPost.campaign_phase_id,
-                        platform: selectedPlatform,
                         scheduled_time: gridPost.scheduled_time.toISOString(),
                         asset_url: assetUrl,
                         asset_name: file.name,
-                        status: uploadError ? 'Error' : 'Uploaded',
-                    });
+                        asset_type: file.type.startsWith('video') ? 'video' : 'image',
+                        caption: '',
+                        status: uploadError ? 'failed' : 'pending'
+                    }, campaignPlatforms); // Pass platforms array
                 }
             }
 
@@ -184,18 +181,21 @@ const Content = () => {
                             ))}
                         </select>
                     </div>
-                    <div>
-                        <label className="font-semibold text-gray-700 mr-3">Select Platform:</label>
-                        <select
-                            className="border rounded px-3 py-2 text-gray-700"
-                            value={selectedPlatform}
-                            onChange={e => setSelectedPlatform(e.target.value)}
-                        >
-                            {PLATFORMS.map(platform => (
-                                <option key={platform} value={platform}>{platform}</option>
-                            ))}
-                        </select>
-                    </div>
+                    {campaignPlatforms.length > 0 && (
+                        <div>
+                            <label className="font-semibold text-gray-700 mr-3">Selected Platforms (AI-Chosen):</label>
+                            <div className="flex gap-2 items-center">
+                                {campaignPlatforms.map(platform => (
+                                    <span
+                                        key={platform}
+                                        className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium"
+                                    >
+                                        {platform}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="mb-6 flex space-x-4">
@@ -208,8 +208,8 @@ const Content = () => {
                     {showGrid && (
                         <button
                             className={`px-4 py-2 rounded font-semibold transition-colors text-white ${Object.keys(mediaChosen).length > 0
-                                    ? 'bg-green-600 hover:bg-green-700'
-                                    : 'bg-gray-400 cursor-not-allowed'
+                                ? 'bg-green-600 hover:bg-green-700'
+                                : 'bg-gray-400 cursor-not-allowed'
                                 }`}
                             disabled={Object.keys(mediaChosen).length === 0}
                             onClick={handleUploadAll}
@@ -221,7 +221,7 @@ const Content = () => {
 
                 {selectedCampaign && showGrid && (
                     <CampaignPostsGrid
-                        key={`${selectedCampaign.id}-${selectedPlatform}`}
+                        key={selectedCampaign.id}
                         campaign={selectedCampaign}
                         phases={selectedCampaign.phases || []}
                         posts={generateGridPosts()}

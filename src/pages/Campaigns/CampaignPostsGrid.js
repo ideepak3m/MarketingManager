@@ -28,7 +28,6 @@ export default function CampaignPostsGrid({ campaign, phases, posts, onUpload, p
                         <th className="p-3 text-left">Post #</th>
                         <th className="p-3 text-left">Upload Media</th>
                         <th className="p-3 text-left">File Name</th>
-                        <th className="p-3 text-left">Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -77,14 +76,6 @@ export default function CampaignPostsGrid({ campaign, phases, posts, onUpload, p
                                         {hasPendingChange && (
                                             <span className="ml-2 text-xs text-blue-600">(pending)</span>
                                         )}
-                                    </td>
-                                    <td className="p-3">
-                                        <span className={`px-2 py-1 rounded text-xs font-semibold ${post.status === 'Uploaded' ? 'bg-green-100 text-green-800' :
-                                                post.status === 'Error' ? 'bg-red-100 text-red-800' :
-                                                    'bg-gray-100 text-gray-800'
-                                            }`}>
-                                            {post.status}
-                                        </span>
                                     </td>
                                 </tr>
                             );
