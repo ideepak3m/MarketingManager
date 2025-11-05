@@ -51,7 +51,13 @@ const LaunchModal = ({ campaign, onClose, onTimelineCalculated }) => {
         console.log('Phases:', phases);
         console.log('onTimelineCalculated function:', onTimelineCalculated);
 
-        const startDate = new Date(localLaunchDate);
+        // Parse date string as local date to avoid timezone issues
+        // localLaunchDate is in format "YYYY-MM-DD"
+        const [year, month, day] = localLaunchDate.split('-').map(Number);
+        const startDate = new Date(year, month - 1, day); // month is 0-indexed
+
+        console.log('Parsed start date:', startDate.toLocaleDateString());
+
         let phaseTimings = [];
         let prevPhaseEnd = null;
 
