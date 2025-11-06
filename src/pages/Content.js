@@ -106,14 +106,18 @@ const Content = () => {
                 });
             }
 
-            // Refresh posts
-            await fetchDbPosts();
+            // Fetch fresh posts from database
+            const { data: freshPosts, error } = await getCampaignPosts(user.id, selectedCampaignId);
 
-            // Open caption modal after upload
-            const updatedPost = dbPosts.find(p => p.id === post.id);
-            if (updatedPost) {
-                setShowUploadModal(false);
-                handleShowCaptionModal(updatedPost);
+            if (!error && Array.isArray(freshPosts)) {
+                setDbPosts(freshPosts);
+
+                // Find the updated post from fresh data
+                const updatedPost = freshPosts.find(p => p.id === post.id);
+                if (updatedPost) {
+                    setShowUploadModal(false);
+                    handleShowCaptionModal(updatedPost);
+                }
             }
         } catch (err) {
             console.error('Upload error:', err);
