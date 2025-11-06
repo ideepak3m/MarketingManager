@@ -30,15 +30,20 @@ const Content = () => {
 
     async function fetchDbPosts() {
         if (!user?.id || !selectedCampaignId) {
+            console.log('Content: No user or campaign selected');
             setDbPosts([]);
             return;
         }
+        console.log('Content: Fetching posts for user:', user.id, 'campaign:', selectedCampaignId);
         // Fetch all posts with all platforms (no platform filter)
         const { data, error } = await getCampaignPosts(user.id, selectedCampaignId);
-        console.log('DB Posts fetched:', data);
+        console.log('Content: DB Posts fetched:', data);
+        console.log('Content: Error:', error);
         if (!error && Array.isArray(data)) {
+            console.log('Content: Setting posts count:', data.length);
             setDbPosts(data);
         } else {
+            console.log('Content: No data or error, setting empty');
             setDbPosts([]);
         }
     }

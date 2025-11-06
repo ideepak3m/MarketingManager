@@ -13,6 +13,8 @@ import { supabase, TABLES } from './supabase'
  */
 export const getCampaignPosts = async (userId, campaignId, platform = null) => {
     try {
+        console.log('getCampaignPosts called with:', { userId, campaignId, platform });
+
         // Query campaign_posts with nested platform details
         let query = supabase
             .from(TABLES.CAMPAIGN_POSTS)
@@ -25,6 +27,13 @@ export const getCampaignPosts = async (userId, campaignId, platform = null) => {
             .order('scheduled_time', { ascending: true });
 
         const { data, error } = await query;
+
+        console.log('getCampaignPosts raw result:', {
+            dataCount: data?.length,
+            error: error?.message,
+            firstPost: data?.[0]
+        });
+
         if (error) throw error;
 
         // If platform filter is specified, filter the results
