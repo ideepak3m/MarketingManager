@@ -14,14 +14,18 @@ const Content = () => {
     const [dbPosts, setDbPosts] = useState([]); // posts from DB
     const { campaigns } = useCampaigns();
     const { user } = useAuth();
-    const plannedCampaigns = campaigns.filter(c => c.status?.toLowerCase() === 'planned');
+    // Show both planned and active campaigns (campaigns that have posts)
+    const activeCampaigns = campaigns.filter(c =>
+        c.status?.toLowerCase() === 'planned' || c.status?.toLowerCase() === 'active'
+    );
     const [selectedCampaignId, setSelectedCampaignId] = useState('');
 
     useEffect(() => {
-        if (plannedCampaigns.length > 0) {
-            setSelectedCampaignId(plannedCampaigns[0].id);
+        // Only set default campaign if none is selected yet
+        if (activeCampaigns.length > 0 && !selectedCampaignId) {
+            setSelectedCampaignId(activeCampaigns[0].id);
         }
-    }, [plannedCampaigns]);
+    }, [activeCampaigns, selectedCampaignId]);
 
     // Fetch campaign posts from DB
     useEffect(() => {
@@ -48,7 +52,7 @@ const Content = () => {
         }
     }
 
-    const selectedCampaign = plannedCampaigns.find(c => c.id === selectedCampaignId);
+    const selectedCampaign = activeCampaigns.find(c => c.id === selectedCampaignId);
     const campaignPlatforms = selectedCampaign?.platforms || [];
 
     // Handler to show caption modal
@@ -139,7 +143,7 @@ const Content = () => {
                             value={selectedCampaignId}
                             onChange={e => setSelectedCampaignId(e.target.value)}
                         >
-                            {plannedCampaigns.map(campaign => (
+                            {activeCampaigns.map(campaign => (
                                 <option key={campaign.id} value={campaign.id}>{campaign.name}</option>
                             ))}
                         </select>

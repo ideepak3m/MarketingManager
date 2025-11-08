@@ -4,7 +4,8 @@ export default function CampaignPostsGrid({ campaign, phases, posts, onUpload, o
     const [uploading, setUploading] = useState({});
     const fileInputRefs = useRef({});
 
-    if (!campaign || campaign.status?.toLowerCase() !== 'planned') return null;
+    // Show grid for planned and active campaigns
+    if (!campaign || !['planned', 'active'].includes(campaign.status?.toLowerCase())) return null;
 
     const getPostsForPhase = (phaseId) => posts.filter(p => p.campaign_phase_id === phaseId);
 
