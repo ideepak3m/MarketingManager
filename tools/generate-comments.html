@@ -75,9 +75,19 @@
         }
 
         input:focus,
-        textarea:focus {
+        textarea:focus,
+        select:focus {
             outline: none;
             border-color: #667eea;
+        }
+
+        select {
+            cursor: pointer;
+            background-color: white;
+        }
+
+        select option {
+            padding: 10px;
         }
 
         .btn {
@@ -213,36 +223,47 @@
         </div>
 
         <div class="section">
+            <button class="btn" onclick="loadCampaigns()" style="width: 100%;">🔍 Load Campaigns</button>
+        </div>
+
+        <div class="section" id="campaignSection" style="display: none;">
+            <label for="campaignSelect">Select Campaign</label>
+            <select id="campaignSelect"
+                style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;"
+                onchange="loadPhases()">
+                <option value="">-- Select a Campaign --</option>
+            </select>
+            <div id="campaignInfo"
+                style="margin-top: 10px; padding: 10px; background: #e8f4f8; border-radius: 5px; color: #0c5460; display: none;">
+            </div>
+        </div>
+
+        <div class="section" id="phaseSection" style="display: none;">
+            <div class="section-title">📊 Campaign Phases</div>
+            <div id="phaseInfo" style="padding: 10px; background: #d4edda; border-radius: 5px; color: #155724;">
+                <p>Phases will appear here after selecting a campaign.</p>
+            </div>
+        </div>
+
+        <div class="section" id="templateSection" style="display: none;">
             <div class="section-title">Comment Templates by Phase (JSON)</div>
             <label for="templates">Paste your AI-generated phase-specific templates below</label>
-            <textarea id="templates" placeholder='{
-  "Awareness": [
-    {"comment": "First time seeing this! Looks interesting.", "reply": "Welcome! Let us know if you have any questions.", "sentiment": "positive"}
-  ],
-  "Consideration": [
-    {"comment": "How does this compare to other solutions?", "reply": "Great question! Here are the key differences...", "sentiment": "question"}
-  ],
-  "Conversion": [
-    {"comment": "Just signed up! Excited to get started.", "reply": "Awesome! Check your email for onboarding steps.", "sentiment": "positive"}
-  ]
-}'></textarea>
+            <textarea id="templates"
+                placeholder='Phase names will be shown above. Use exact names in your JSON.'></textarea>
 
             <div class="example">
-                <div class="example-title">📋 Template Format:</div>
-                Organize templates by phase name (must match your campaign phases exactly):
-                <ul style="margin-left: 20px; margin-top: 10px;">
-                    <li><code>phase_name</code> - Array of comment/reply objects for that phase</li>
-                    <li>Each comment object should have:
-                        <ul style="margin-left: 20px;">
-                            <li><code>comment</code> - The comment text</li>
-                            <li><code>reply</code> - The reply text</li>
-                            <li><code>sentiment</code> - positive, question, neutral, or negative</li>
-                        </ul>
-                    </li>
-                </ul>
+                <div class="example-title">📋 Template Format Example:</div>
+                <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px;">{
+  "Phase Name 1": [
+    {"comment": "...", "reply": "...", "sentiment": "positive"}
+  ],
+  "Phase Name 2": [
+    {"comment": "...", "reply": "...", "sentiment": "question"}
+  ]
+}</pre>
                 <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px; color: #856404;">
-                    💡 <strong>Tip:</strong> Ask AI to generate templates based on your campaign phases. Comments will
-                    be timestamped within each phase's date range for realistic data.
+                    💡 <strong>Tip:</strong> Copy the phase names shown above and use them as keys in your JSON.
+                    Comments will be timestamped within each phase's date range.
                 </div>
             </div>
         </div>
@@ -262,7 +283,8 @@
                 replies</small>
         </div>
 
-        <button class="btn" onclick="generateComments()">🚀 Generate Comments</button>
+        <button class="btn" id="generateBtn" onclick="generateComments()" style="display: none;">🚀 Generate
+            Comments</button>
 
         <div class="progress" id="progress">
             <div class="progress-bar">
@@ -274,6 +296,8 @@
 
     <script>
         let supabase = null;
+        let selectedCampaign = null;
+        let campaignPhases = [];
 
         function log(message, type = 'info') {
             const logDiv = document.getElementById('log');
@@ -289,6 +313,126 @@
             progressFill.style.width = `${percent}%`;
             progressFill.textContent = `${Math.round(percent)}%`;
             if (message) log(message, 'info');
+        }
+
+        async function loadCampaigns() {
+            const url = document.getElementById('supabaseUrl').value.trim();
+            const key = document.getElementById('supabaseKey').value.trim();
+
+            if (!url || !key) {
+                alert('Please enter Supabase URL and Service Key first');
+                return;
+            }
+
+            // Initialize Supabase
+            supabase = window.supabase.createClient(url, key);
+
+            try {
+                log('📊 Fetching campaigns...', 'info');
+                const { data: campaigns, error } = await supabase
+                    .from('campaigns')
+                    .select('id, name, status, platforms, start_date, end_date')
+                    .in('status', ['planned', 'active'])
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                if (!campaigns || campaigns.length === 0) {
+                    alert('No campaigns found with status "planned" or "active"');
+                    return;
+                }
+
+                log(`✅ Found ${campaigns.length} campaigns`, 'success');
+
+                // Populate dropdown
+                const select = document.getElementById('campaignSelect');
+                select.innerHTML = '<option value="">-- Select a Campaign --</option>';
+                campaigns.forEach(c => {
+                    const option = document.createElement('option');
+                    option.value = c.id;
+                    option.textContent = `${c.name} (${c.status})`;
+                    option.dataset.campaign = JSON.stringify(c);
+                    select.appendChild(option);
+                });
+
+                // Show campaign section
+                document.getElementById('campaignSection').style.display = 'block';
+
+            } catch (error) {
+                log(`❌ Error loading campaigns: ${error.message}`, 'error');
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function loadPhases() {
+            const select = document.getElementById('campaignSelect');
+            const selectedOption = select.options[select.selectedIndex];
+
+            if (!selectedOption.value) {
+                document.getElementById('phaseSection').style.display = 'none';
+                document.getElementById('templateSection').style.display = 'none';
+                document.getElementById('generateBtn').style.display = 'none';
+                return;
+            }
+
+            selectedCampaign = JSON.parse(selectedOption.dataset.campaign);
+
+            // Show campaign info
+            const infoDiv = document.getElementById('campaignInfo');
+            infoDiv.innerHTML = `
+                <strong>📋 ${selectedCampaign.name}</strong><br>
+                <small>Status: ${selectedCampaign.status} | Platforms: ${selectedCampaign.platforms.join(', ')}</small><br>
+                <small>Duration: ${new Date(selectedCampaign.start_date).toLocaleDateString()} - ${new Date(selectedCampaign.end_date).toLocaleDateString()}</small>
+            `;
+            infoDiv.style.display = 'block';
+
+            try {
+                log(`📊 Fetching phases for campaign "${selectedCampaign.name}"...`, 'info');
+                const { data: phases, error } = await supabase
+                    .from('campaign_phases')
+                    .select('id, name, phase_order, start_date, end_date')
+                    .eq('campaign_id', selectedCampaign.id)
+                    .order('phase_order', { ascending: true });
+
+                if (error) throw error;
+
+                if (!phases || phases.length === 0) {
+                    alert('No phases found for this campaign');
+                    return;
+                }
+
+                campaignPhases = phases;
+                log(`✅ Found ${phases.length} phases`, 'success');
+
+                // Display phases
+                const phaseInfoDiv = document.getElementById('phaseInfo');
+                let phaseHTML = '<strong>Use these exact phase names in your JSON:</strong><ul style="margin: 10px 0 0 20px;">';
+                phases.forEach(p => {
+                    const startDate = new Date(p.start_date).toLocaleDateString();
+                    const endDate = new Date(p.end_date).toLocaleDateString();
+                    phaseHTML += `<li><code>"${p.name}"</code> - ${startDate} to ${endDate}</li>`;
+                });
+                phaseHTML += '</ul>';
+                phaseInfoDiv.innerHTML = phaseHTML;
+
+                // Show sections
+                document.getElementById('phaseSection').style.display = 'block';
+                document.getElementById('templateSection').style.display = 'block';
+                document.getElementById('generateBtn').style.display = 'block';
+
+                // Update textarea placeholder with actual phase names
+                const placeholderObj = {};
+                phases.forEach(p => {
+                    placeholderObj[p.name] = [
+                        { "comment": "Example comment", "reply": "Example reply", "sentiment": "positive" }
+                    ];
+                });
+                document.getElementById('templates').placeholder = JSON.stringify(placeholderObj, null, 2);
+
+            } catch (error) {
+                log(`❌ Error loading phases: ${error.message}`, 'error');
+                alert(`Error: ${error.message}`);
+            }
         }
 
         function generateRandomDateInPhase(phaseStartDate, phaseEndDate, isReply = false) {
@@ -323,34 +467,60 @@
                 return;
             }
 
+            if (!selectedCampaign) {
+                alert('Please select a campaign first');
+                return;
+            }
+
+            if (campaignPhases.length === 0) {
+                alert('No phases loaded for selected campaign');
+                return;
+            }
+
             let templates;
             try {
                 templates = JSON.parse(templatesText);
                 if (typeof templates !== 'object' || Object.keys(templates).length === 0) {
                     throw new Error('Templates must be an object with phase names as keys');
                 }
+                
+                // Validate that template keys match actual phase names
+                const phaseNames = campaignPhases.map(p => p.name);
+                const templateKeys = Object.keys(templates);
+                const missingPhases = phaseNames.filter(name => !templateKeys.includes(name));
+                const extraPhases = templateKeys.filter(name => !phaseNames.includes(name));
+                
+                if (missingPhases.length > 0) {
+                    throw new Error(`Missing templates for phases: ${missingPhases.join(', ')}`);
+                }
+                
+                if (extraPhases.length > 0) {
+                    log(`⚠️ Warning: Templates provided for unknown phases: ${extraPhases.join(', ')}`, 'warning');
+                }
+                
                 // Validate that each phase has an array of templates
                 for (const [phaseName, phaseTemplates] of Object.entries(templates)) {
                     if (!Array.isArray(phaseTemplates) || phaseTemplates.length === 0) {
                         throw new Error(`Phase "${phaseName}" must have a non-empty array of templates`);
                     }
                 }
+                
+                log(`✅ Templates validated for ${Object.keys(templates).length} phases`, 'success');
             } catch (e) {
                 alert(`Invalid JSON format for templates: ${e.message}`);
                 return;
             }
 
-            // Initialize Supabase
-            supabase = window.supabase.createClient(url, key);
-
             // Show progress
             document.getElementById('progress').classList.add('show');
             document.getElementById('log').innerHTML = '';
             log('🚀 Starting comment generation...', 'success');
+            log(`📋 Campaign: ${selectedCampaign.name}`, 'info');
+            log(`🎯 Platforms: ${selectedCampaign.platforms.join(', ')}`, 'info');
 
             try {
-                // Fetch all campaign_post_platforms with phase information
-                log('📊 Fetching campaign posts with phase data...', 'info');
+                // Fetch campaign_post_platforms for ONLY this campaign
+                log('📊 Fetching campaign posts with phase and platform data...', 'info');
                 const { data: platforms, error: platformsError } = await supabase
                     .from('campaign_post_platforms')
                     .select(`
@@ -359,26 +529,49 @@
                             id,
                             scheduled_time,
                             campaign_phase_id,
-                            phase:campaign_phases(
+                            phase:campaign_phases!inner(
                                 id,
                                 name,
                                 start_date,
-                                end_date
+                                end_date,
+                                campaign_id
                             )
                         )
                     `)
+                    .eq('post.phase.campaign_id', selectedCampaign.id)
                     .not('post', 'is', null);
 
                 if (platformsError) throw platformsError;
 
-                log(`✅ Found ${platforms.length} platform posts`, 'success');
+                log(`✅ Found ${platforms.length} total platform posts for this campaign`, 'success');
+
+                // Filter platforms to only include those specified in campaign.platforms
+                const filteredPlatforms = platforms.filter(p => {
+                    const isIncluded = selectedCampaign.platforms.includes(p.platform);
+                    if (!isIncluded) {
+                        log(`⚠️ Skipping ${p.platform} - not in campaign platforms [${selectedCampaign.platforms.join(', ')}]`, 'warning');
+                    }
+                    return isIncluded;
+                });
+
+                log(`✅ Filtered to ${filteredPlatforms.length} posts matching campaign platforms`, 'success');
 
                 // Group by phase for logging
                 const phaseGroups = {};
-                platforms.forEach(p => {
+                const platformGroups = {};
+                filteredPlatforms.forEach(p => {
                     const phaseName = p.post?.phase?.name || 'Unknown';
+                    const platformName = p.platform;
                     phaseGroups[phaseName] = (phaseGroups[phaseName] || 0) + 1;
+                    platformGroups[platformName] = (platformGroups[platformName] || 0) + 1;
                 });
+
+                log('📊 Platform breakdown:', 'info');
+                Object.entries(platformGroups).forEach(([platform, count]) => {
+                    log(`  📱 ${platform}: ${count} posts`, 'info');
+                });
+
+                log('📊 Phase breakdown:', 'info');
                 Object.entries(phaseGroups).forEach(([phase, count]) => {
                     log(`  📍 ${phase}: ${count} posts`, 'info');
                 });
@@ -387,8 +580,8 @@
                 let totalReplies = 0;
                 let skippedPosts = 0;
 
-                for (let i = 0; i < platforms.length; i++) {
-                    const platform = platforms[i];
+                for (let i = 0; i < filteredPlatforms.length; i++) {
+                    const platform = filteredPlatforms[i];
                     const phaseName = platform.post?.phase?.name;
                     const phaseStartDate = platform.post?.phase?.start_date;
                     const phaseEndDate = platform.post?.phase?.end_date;
@@ -444,8 +637,8 @@
                     }
 
                     // Update progress
-                    const progress = ((i + 1) / platforms.length) * 100;
-                    updateProgress(progress, `Processed ${i + 1}/${platforms.length} platforms`);
+                    const progress = ((i + 1) / filteredPlatforms.length) * 100;
+                    updateProgress(progress, `Processed ${i + 1}/${filteredPlatforms.length} platforms`);
                 }
 
                 log(`✅ Generation complete!`, 'success');
