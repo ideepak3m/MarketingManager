@@ -483,28 +483,28 @@
                 if (typeof templates !== 'object' || Object.keys(templates).length === 0) {
                     throw new Error('Templates must be an object with phase names as keys');
                 }
-                
+
                 // Validate that template keys match actual phase names
                 const phaseNames = campaignPhases.map(p => p.name);
                 const templateKeys = Object.keys(templates);
                 const missingPhases = phaseNames.filter(name => !templateKeys.includes(name));
                 const extraPhases = templateKeys.filter(name => !phaseNames.includes(name));
-                
+
                 if (missingPhases.length > 0) {
                     throw new Error(`Missing templates for phases: ${missingPhases.join(', ')}`);
                 }
-                
+
                 if (extraPhases.length > 0) {
                     log(`⚠️ Warning: Templates provided for unknown phases: ${extraPhases.join(', ')}`, 'warning');
                 }
-                
+
                 // Validate that each phase has an array of templates
                 for (const [phaseName, phaseTemplates] of Object.entries(templates)) {
                     if (!Array.isArray(phaseTemplates) || phaseTemplates.length === 0) {
                         throw new Error(`Phase "${phaseName}" must have a non-empty array of templates`);
                     }
                 }
-                
+
                 log(`✅ Templates validated for ${Object.keys(templates).length} phases`, 'success');
             } catch (e) {
                 alert(`Invalid JSON format for templates: ${e.message}`);

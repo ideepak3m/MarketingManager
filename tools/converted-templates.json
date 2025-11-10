@@ -1,0 +1,123 @@
+{
+    "Awareness Building": [
+        {
+            "comment": "Never heard of Amazon return products before, what are they?",
+            "reply": "They're items returned by customers but still in great condition, resold at discounted prices.",
+            "sentiment": "question"
+        },
+        {
+            "comment": "Interesting concept, I like the idea of saving money on returns.",
+            "reply": "Exactly! It's a smart way to shop sustainably and save big.",
+            "sentiment": "positive"
+        },
+        {
+            "comment": "Do you also sell electronics in this category?",
+            "reply": "Yes, electronics are included and inspected before resale.",
+            "sentiment": "question"
+        },
+        {
+            "comment": "Sounds too good to be true, is this legit?",
+            "reply": "Absolutely! We source directly from Amazon returns and verify every product.",
+            "sentiment": "negative"
+        },
+        {
+            "comment": "Cool, I'll check it out later.",
+            "reply": "Great! You'll find plenty of deals worth exploring.",
+            "sentiment": "neutral"
+        },
+        {
+            "comment": "Are these products safe to use?",
+            "reply": "Yes, all items are quality‑checked before being listed.",
+            "sentiment": "question"
+        },
+        {
+            "comment": "I love the idea of giving returned items a second life.",
+            "reply": "We're glad you see the value — it's eco‑friendly and budget‑friendly.",
+            "sentiment": "positive"
+        }
+    ],
+    "Engagement & Interest": [
+        {
+            "comment": "I bought a blender last week, works perfectly!",
+            "reply": "That's wonderful to hear — thanks for sharing your experience!",
+            "sentiment": "positive"
+        },
+        {
+            "comment": "Do you post customer reviews?",
+            "reply": "Yes, we highlight real customer stories on our page.",
+            "sentiment": "question"
+        },
+        {
+            "comment": "I'm curious about fashion items, do you stock them?",
+            "reply": "Yes, fashion is one of our fastest‑moving categories.",
+            "sentiment": "question"
+        },
+        {
+            "comment": "I told my friends about this campaign.",
+            "reply": "Thanks for spreading the word — we appreciate your support!",
+            "sentiment": "positive"
+        },
+        {
+            "comment": "Do you have giveaways?",
+            "reply": "Yes, we run contests regularly — stay tuned for the next one.",
+            "sentiment": "question"
+        },
+        {
+            "comment": "Not sure if I'd trust return products for gifts.",
+            "reply": "We understand the concern — many items are like new and make great gifts.",
+            "sentiment": "negative"
+        },
+        {
+            "comment": "How do I stay updated on new deals?",
+            "reply": "Follow our page and turn on notifications for daily updates.",
+            "sentiment": "question"
+        },
+        {
+            "comment": "Looks like a smart way to save money.",
+            "reply": "Exactly — it's all about value and sustainability.",
+            "sentiment": "positive"
+        },
+        {
+            "comment": "I'm just browsing, not sure if I'll buy yet.",
+            "reply": "No worries — take your time, and you'll find something that fits your needs.",
+            "sentiment": "neutral"
+        }
+    ],
+    "Sales Push": [
+        {
+            "comment": "What's the average discount on these products?",
+            "reply": "Most items are 30–70% off retail prices.",
+            "sentiment": "question"
+        },
+        {
+            "comment": "Do you have deals on home appliances?",
+            "reply": "Yes, appliances are included — check today's featured offers.",
+            "sentiment": "question"
+        },
+        {
+            "comment": "I love the discounts, just grabbed a phone at half price!",
+            "reply": "That's fantastic — enjoy your new phone and the savings!",
+            "sentiment": "positive"
+        },
+        {
+            "comment": "Is shipping free?",
+            "reply": "Yes, shipping is free on orders over $50.",
+            "sentiment": "question"
+        },
+        {
+            "comment": "Do you accept returns if I don't like the product?",
+            "reply": "Yes, returns are accepted within 14 days for eligible items.",
+            "sentiment": "question"
+        },
+        {
+            "comment": "I'm worried these might be damaged goods.",
+            "reply": "We carefully inspect every item to ensure quality before resale.",
+            "sentiment": "negative"
+        },
+        {
+            "comment": "Cool, I'll wait for the next flash sale.",
+            "reply": "Great idea — flash sales are posted daily, so keep an eye out!",
+            "sentiment": "neutral"
+        }
+    ]
+}
