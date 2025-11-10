@@ -66,19 +66,19 @@ const Analytics = () => {
         try {
             // Fetch overview metrics
             await fetchOverviewMetrics();
-            
+
             // Fetch engagement over time
             await fetchEngagementOverTime();
-            
+
             // Fetch platform performance
             await fetchPlatformPerformance();
-            
+
             // Fetch phase performance
             await fetchPhasePerformance();
-            
+
             // Fetch top posts
             await fetchTopPosts();
-            
+
             // Fetch sentiment distribution
             await fetchSentimentDistribution();
 
@@ -135,14 +135,14 @@ const Analytics = () => {
             // Calculate metrics
             const totalReach = platformData?.reduce((sum, p) => sum + (p.reach || 0), 0) || 0;
             const totalImpressions = platformData?.reduce((sum, p) => sum + (p.impressions || 0), 0) || 0;
-            const totalEngagement = platformData?.reduce((sum, p) => 
+            const totalEngagement = platformData?.reduce((sum, p) =>
                 sum + (p.likes_count || 0) + (p.comments_count || 0) + (p.shares_count || 0), 0) || 0;
-            const engagementRate = totalImpressions > 0 
+            const engagementRate = totalImpressions > 0
                 ? ((totalEngagement / totalImpressions) * 100).toFixed(1)
                 : 0;
 
             const repliedCount = commentsData?.filter(c => c.replied).length || 0;
-            const responseRate = commentsCount > 0 
+            const responseRate = commentsCount > 0
                 ? ((repliedCount / commentsCount) * 100).toFixed(0)
                 : 0;
 
@@ -241,14 +241,14 @@ const Analytics = () => {
                 platformStats[item.platform].posts += 1;
                 platformStats[item.platform].reach += item.reach || 0;
                 platformStats[item.platform].impressions += item.impressions || 0;
-                platformStats[item.platform].engagement += 
+                platformStats[item.platform].engagement +=
                     (item.likes_count || 0) + (item.comments_count || 0) + (item.shares_count || 0);
             });
 
             // Calculate engagement rate
             const chartData = Object.values(platformStats).map(p => ({
                 ...p,
-                engagementRate: p.impressions > 0 
+                engagementRate: p.impressions > 0
                     ? ((p.engagement / p.impressions) * 100).toFixed(1)
                     : 0
             }));
