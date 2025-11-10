@@ -43,25 +43,61 @@ const Analytics = () => {
 
     const fetchCampaigns = async () => {
         try {
+            console.log('Fetching campaigns for user:', user.id);
+
+            // First, get all sessions for this user
+            const { data: sessions, error: sessionsError } = await supabase
+                .from('nova_user_sessions')
+                .select('session_id')
+                .eq('user_id', user.id);
+
+            if (sessionsError) throw sessionsError;
+
+            console.log('User sessions:', sessions);
+
+            if (!sessions || sessions.length === 0) {
+                console.log('No sessions found for this user');
+                setLoading(false);
+                return;
+            }
+
+            const sessionIds = sessions.map(s => s.session_id);
+            console.log('Session IDs:', sessionIds);
+
+            // Now get campaigns for these sessions
             const { data, error } = await supabase
                 .from('campaigns')
-                .select('id, name, status, start_date, end_date')
-                .eq('user_id', user.id)
-                .in('status', ['active', 'completed'])
+                .select('id, name, status, start_date, end_date, session_id')
+                .in('session_id', sessionIds)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
 
-            setCampaigns(data || []);
-            if (data && data.length > 0) {
-                setSelectedCampaign(data[0].id);
+            console.log('Raw campaigns data:', data);
+            console.log('Total campaigns found:', data?.length);
+
+            // Filter for active or completed campaigns (case-insensitive)
+            const filteredData = (data || []).filter(campaign => {
+                const status = campaign.status?.toLowerCase();
+                console.log(`Campaign "${campaign.name}" - session_id: ${campaign.session_id}, status: "${campaign.status}"`);
+                return status === 'active' || status === 'completed';
+            });
+
+            console.log('Filtered campaigns:', filteredData);
+
+            setCampaigns(filteredData);
+            if (filteredData.length > 0) {
+                setSelectedCampaign(filteredData[0].id);
+            } else {
+                // No campaigns found, stop loading
+                console.log('No active/completed campaigns found');
+                setLoading(false);
             }
         } catch (error) {
             console.error('Error fetching campaigns:', error);
+            setLoading(false);
         }
-    };
-
-    const fetchAnalytics = async () => {
+    }; const fetchAnalytics = async () => {
         setLoading(true);
         try {
             // Fetch overview metrics
@@ -91,46 +127,51 @@ const Analytics = () => {
 
     const fetchOverviewMetrics = async () => {
         try {
-            // Get total posts
+            // Get all campaign_posts for this campaign
+            const { data: campaignPosts } = await supabase
+                .from('campaign_posts')
+                .select('id')
+                .eq('campaign_id', selectedCampaign);
+
+            if (!campaignPosts || campaignPosts.length === 0) {
+                setAnalytics(prev => ({
+                    ...prev, overview: {
+                        totalPosts: 0,
+                        totalReach: 0,
+                        totalEngagement: 0,
+                        engagementRate: 0,
+                        responseRate: 0,
+                        platforms: 0
+                    }
+                }));
+                return;
+            }
+
+            const postIds = campaignPosts.map(p => p.id);
+
+            // Get total posts count
             const { count: postsCount } = await supabase
                 .from('campaign_post_platforms')
                 .select('id', { count: 'exact', head: true })
-                .eq('post.phase.campaign_id', selectedCampaign);
+                .in('campaign_post_id', postIds);
 
             // Get engagement metrics
             const { data: platformData } = await supabase
                 .from('campaign_post_platforms')
-                .select(`
-                    likes_count,
-                    comments_count,
-                    shares_count,
-                    views_count,
-                    reach,
-                    impressions,
-                    platform,
-                    post:campaign_posts!inner(
-                        phase:campaign_phases!inner(
-                            campaign_id
-                        )
-                    )
-                `)
-                .eq('post.phase.campaign_id', selectedCampaign);
+                .select('likes_count, comments_count, shares_count, views_count, reach, impressions, platform')
+                .in('campaign_post_id', postIds);
 
             // Get comments
             const { data: commentsData, count: commentsCount } = await supabase
                 .from('social_comments')
-                .select(`
-                    id,
-                    replied,
-                    campaign_post_platform:campaign_post_platforms!inner(
-                        post:campaign_posts!inner(
-                            phase:campaign_phases!inner(
-                                campaign_id
-                            )
-                        )
-                    )
-                `, { count: 'exact' })
-                .eq('campaign_post_platform.post.phase.campaign_id', selectedCampaign);
+                .select('id, replied, campaign_post_platform_id')
+                .in('campaign_post_platform_id',
+                    (await supabase
+                        .from('campaign_post_platforms')
+                        .select('id')
+                        .in('campaign_post_id', postIds)
+                    ).data?.map(p => p.id) || []
+                );
 
             // Calculate metrics
             const totalReach = platformData?.reduce((sum, p) => sum + (p.reach || 0), 0) || 0;
@@ -167,20 +208,37 @@ const Analytics = () => {
 
     const fetchEngagementOverTime = async () => {
         try {
+            // Get all campaign_posts for this campaign
+            const { data: campaignPosts } = await supabase
+                .from('campaign_posts')
+                .select('id')
+                .eq('campaign_id', selectedCampaign);
+
+            if (!campaignPosts || campaignPosts.length === 0) {
+                setAnalytics(prev => ({ ...prev, engagementOverTime: [] }));
+                return;
+            }
+
+            const postIds = campaignPosts.map(p => p.id);
+
+            // Get platform IDs
+            const { data: platforms } = await supabase
+                .from('campaign_post_platforms')
+                .select('id')
+                .in('campaign_post_id', postIds);
+
+            if (!platforms || platforms.length === 0) {
+                setAnalytics(prev => ({ ...prev, engagementOverTime: [] }));
+                return;
+            }
+
+            const platformIds = platforms.map(p => p.id);
+
+            // Get comments with timestamps
             const { data } = await supabase
                 .from('social_comments')
-                .select(`
-                    timestamp,
-                    like_count,
-                    campaign_post_platform:campaign_post_platforms!inner(
-                        post:campaign_posts!inner(
-                            phase:campaign_phases!inner(
-                                campaign_id
-                            )
-                        )
-                    )
-                `)
-                .eq('campaign_post_platform.post.phase.campaign_id', selectedCampaign)
+                .select('timestamp, like_count')
+                .in('campaign_post_platform_id', platformIds)
                 .order('timestamp');
 
             // Group by date
@@ -208,23 +266,24 @@ const Analytics = () => {
 
     const fetchPlatformPerformance = async () => {
         try {
+            // Get all campaign_posts for this campaign
+            const { data: campaignPosts } = await supabase
+                .from('campaign_posts')
+                .select('id')
+                .eq('campaign_id', selectedCampaign);
+
+            if (!campaignPosts || campaignPosts.length === 0) {
+                setAnalytics(prev => ({ ...prev, platformPerformance: [] }));
+                return;
+            }
+
+            const postIds = campaignPosts.map(p => p.id);
+
+            // Get platform metrics
             const { data } = await supabase
                 .from('campaign_post_platforms')
-                .select(`
-                    platform,
-                    likes_count,
-                    comments_count,
-                    shares_count,
-                    reach,
-                    impressions,
-                    engagement_rate,
-                    post:campaign_posts!inner(
-                        phase:campaign_phases!inner(
-                            campaign_id
-                        )
-                    )
-                `)
-                .eq('post.phase.campaign_id', selectedCampaign);
+                .select('platform, likes_count, comments_count, shares_count, reach, impressions, engagement_rate')
+                .in('campaign_post_id', postIds);
 
             // Group by platform
             const platformStats = {};
@@ -277,42 +336,37 @@ const Analytics = () => {
                     .select('id', { count: 'exact', head: true })
                     .eq('campaign_phase_id', phase.id);
 
+                // Get post IDs for this phase
+                const { data: phasePosts } = await supabase
+                    .from('campaign_posts')
+                    .select('id')
+                    .eq('campaign_phase_id', phase.id);
+
+                const postIds = phasePosts?.map(p => p.id) || [];
+
                 const { data: platformData } = await supabase
                     .from('campaign_post_platforms')
-                    .select(`
-                        likes_count,
-                        comments_count,
-                        shares_count,
-                        post:campaign_posts!inner(
-                            campaign_phase_id
-                        )
-                    `)
-                    .eq('post.campaign_phase_id', phase.id);
+                    .select('likes_count, comments_count, shares_count')
+                    .in('campaign_post_id', postIds);
+
+                // Get platform IDs for comments query
+                const { data: phasePlatforms } = await supabase
+                    .from('campaign_post_platforms')
+                    .select('id')
+                    .in('campaign_post_id', postIds);
+
+                const platformIds = phasePlatforms?.map(p => p.id) || [];
 
                 const { count: commentsCount } = await supabase
                     .from('social_comments')
-                    .select(`
-                        id,
-                        campaign_post_platform:campaign_post_platforms!inner(
-                            post:campaign_posts!inner(
-                                campaign_phase_id
-                            )
-                        )
-                    `, { count: 'exact', head: true })
-                    .eq('campaign_post_platform.post.campaign_phase_id', phase.id);
+                    .select('id', { count: 'exact', head: true })
+                    .in('campaign_post_platform_id', platformIds);
 
                 const { count: repliedCount } = await supabase
                     .from('social_comments')
-                    .select(`
-                        id,
-                        campaign_post_platform:campaign_post_platforms!inner(
-                            post:campaign_posts!inner(
-                                campaign_phase_id
-                            )
-                        )
-                    `, { count: 'exact', head: true })
+                    .select('id', { count: 'exact', head: true })
                     .eq('replied', true)
-                    .eq('campaign_post_platform.post.campaign_phase_id', phase.id);
+                    .in('campaign_post_platform_id', platformIds);
 
                 const totalEngagement = platformData?.reduce((sum, p) =>
                     sum + (p.likes_count || 0) + (p.comments_count || 0) + (p.shares_count || 0), 0) || 0;
@@ -341,32 +395,52 @@ const Analytics = () => {
 
     const fetchTopPosts = async () => {
         try {
+            // Get all campaign_posts for this campaign
+            const { data: campaignPosts } = await supabase
+                .from('campaign_posts')
+                .select('id, scheduled_time, campaign_phase_id')
+                .eq('campaign_id', selectedCampaign);
+
+            if (!campaignPosts || campaignPosts.length === 0) {
+                setAnalytics(prev => ({ ...prev, topPosts: [] }));
+                return;
+            }
+
+            const postIds = campaignPosts.map(p => p.id);
+
+            // Get platform data with engagement
             const { data } = await supabase
                 .from('campaign_post_platforms')
-                .select(`
-                    id,
-                    platform,
-                    likes_count,
-                    comments_count,
-                    shares_count,
-                    engagement_rate,
-                    post:campaign_posts!inner(
-                        scheduled_time,
-                        phase:campaign_phases!inner(
-                            name,
-                            campaign_id
-                        )
-                    )
-                `)
-                .eq('post.phase.campaign_id', selectedCampaign)
+                .select('id, platform, likes_count, comments_count, shares_count, engagement_rate, campaign_post_id')
+                .in('campaign_post_id', postIds)
                 .order('engagement_rate', { ascending: false })
                 .limit(5);
+
+            // Get phase names for the posts
+            const phaseIds = [...new Set(campaignPosts.map(p => p.campaign_phase_id))];
+            const { data: phases } = await supabase
+                .from('campaign_phases')
+                .select('id, name')
+                .in('id', phaseIds);
+
+            const phaseMap = {};
+            phases?.forEach(phase => {
+                phaseMap[phase.id] = phase.name;
+            });
+
+            const postMap = {};
+            campaignPosts.forEach(post => {
+                postMap[post.id] = {
+                    scheduled_time: post.scheduled_time,
+                    phase_name: phaseMap[post.campaign_phase_id]
+                };
+            });
 
             const formattedData = data?.map((item, index) => ({
                 rank: index + 1,
                 platform: item.platform,
-                phase: item.post.phase.name,
-                posted: new Date(item.post.scheduled_time).toLocaleDateString(),
+                phase: postMap[item.campaign_post_id]?.phase_name || 'Unknown',
+                posted: new Date(postMap[item.campaign_post_id]?.scheduled_time).toLocaleDateString(),
                 likes: item.likes_count || 0,
                 comments: item.comments_count || 0,
                 engagement: `${item.engagement_rate || 0}%`
@@ -384,19 +458,43 @@ const Analytics = () => {
 
     const fetchSentimentDistribution = async () => {
         try {
-            const { data } = await supabase
+            // Get all campaign_posts for this campaign
+            const { data: campaignPosts } = await supabase
+                .from('campaign_posts')
+                .select('id')
+                .eq('campaign_id', selectedCampaign);
+
+            if (!campaignPosts || campaignPosts.length === 0) {
+                setAnalytics(prev => ({ ...prev, sentimentDistribution: [] }));
+                return;
+            }
+
+            const postIds = campaignPosts.map(p => p.id);
+
+            // Get platform IDs
+            const { data: platforms } = await supabase
+                .from('campaign_post_platforms')
+                .select('id')
+                .in('campaign_post_id', postIds);
+
+            if (!platforms || platforms.length === 0) {
+                setAnalytics(prev => ({ ...prev, sentimentDistribution: [] }));
+                return;
+            }
+
+            const platformIds = platforms.map(p => p.id);
+
+            // Get comments
+            const { data, error } = await supabase
                 .from('social_comments')
-                .select(`
-                    text,
-                    campaign_post_platform:campaign_post_platforms!inner(
-                        post:campaign_posts!inner(
-                            phase:campaign_phases!inner(
-                                campaign_id
-                            )
-                        )
-                    )
-                `)
-                .eq('campaign_post_platform.post.phase.campaign_id', selectedCampaign);
+                .select('text, campaign_post_platform_id')
+                .in('campaign_post_platform_id', platformIds);
+
+            if (error) {
+                console.error('Error fetching comments:', error);
+                setAnalytics(prev => ({ ...prev, sentimentDistribution: [] }));
+                return;
+            }
 
             // Simple sentiment detection based on keywords (can be enhanced)
             const sentimentCounts = {
@@ -407,7 +505,7 @@ const Analytics = () => {
             };
 
             data?.forEach(comment => {
-                const text = comment.text.toLowerCase();
+                const text = comment.text?.toLowerCase() || '';
                 if (text.includes('?')) {
                     sentimentCounts.question++;
                 } else if (text.match(/love|great|awesome|perfect|excellent|fantastic|thank/)) {

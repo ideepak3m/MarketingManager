@@ -94,11 +94,11 @@ const Campaigns = () => {
         console.log('Current campaigns list:', campaigns);
         if (!launchingCampaign || !calculatedTimeline) return;
         try {
-            // Update campaign table: status, start_date, end_date
+            // Update campaign table: status to 'active', start_date, end_date
             const { data: campaignUpdate, error: campaignError, status } = await supabase
                 .from('campaigns')
                 .update({
-                    status: 'planned',
+                    status: 'active',
                     start_date: calculatedTimeline.campaignStart,
                     end_date: calculatedTimeline.campaignEnd
                 })
@@ -110,13 +110,13 @@ const Campaigns = () => {
                 throw new Error('No campaign rows updated. Check campaign ID and DB connection.');
             }
 
-            // Update campaign_phases table: status, start_date, end_date for each phase
+            // Update campaign_phases table: status to 'active', start_date, end_date for each phase
             for (const phase of calculatedTimeline.phases) {
                 console.log('Updating campaign_phase:', phase);
                 const { data: phaseUpdate, error: phaseError } = await supabase
                     .from('campaign_phases')
                     .update({
-                        status: 'planned',
+                        status: 'active',
                         start_date: phase.start,
                         end_date: phase.end
                     })
@@ -139,6 +139,38 @@ const Campaigns = () => {
         } catch (err) {
             console.error('Error launching campaign:', err);
             alert('Failed to launch campaign: ' + (err.message || err));
+        }
+    };
+
+    // Handler for marking campaign as completed
+    const handleCompleteCampaign = async (campaign) => {
+        if (!window.confirm(`Are you sure you want to mark "${campaign.name}" as completed?`)) {
+            return;
+        }
+
+        try {
+            // Update campaign status to 'completed'
+            const { error: campaignError } = await supabase
+                .from('campaigns')
+                .update({ status: 'completed' })
+                .eq('id', campaign.id);
+
+            if (campaignError) throw campaignError;
+
+            // Update all phases to 'completed'
+            const { error: phasesError } = await supabase
+                .from('campaign_phases')
+                .update({ status: 'completed' })
+                .eq('campaign_id', campaign.id);
+
+            if (phasesError) throw phasesError;
+
+            alert('Campaign marked as completed!');
+            // Refresh campaigns list
+            refetch();
+        } catch (err) {
+            console.error('Error completing campaign:', err);
+            alert('Failed to complete campaign: ' + (err.message || err));
         }
     };
 
@@ -237,6 +269,7 @@ const Campaigns = () => {
                                 generatePDF={generatePDF}
                                 setLaunchingCampaign={setLaunchingCampaign}
                                 setShowLaunchModal={setShowLaunchModal}
+                                handleCompleteCampaign={handleCompleteCampaign}
                             />
                         ))}
                     </div>
@@ -268,6 +301,7 @@ const Campaigns = () => {
                                 generatePDF={generatePDF}
                                 setLaunchingCampaign={setLaunchingCampaign}
                                 setShowLaunchModal={setShowLaunchModal}
+                                handleCompleteCampaign={handleCompleteCampaign}
                             />
                         ))}
                     </div>
@@ -292,6 +326,7 @@ const Campaigns = () => {
                                 generatePDF={generatePDF}
                                 setLaunchingCampaign={setLaunchingCampaign}
                                 setShowLaunchModal={setShowLaunchModal}
+                                handleCompleteCampaign={handleCompleteCampaign}
                             />
                         ))}
                     </div>

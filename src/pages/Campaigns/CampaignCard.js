@@ -64,9 +64,11 @@ const formatPlatforms = (campaign) => {
     return platforms;
 };
 
-const CampaignCard = ({ campaign, openModal, generatePDF, setLaunchingCampaign, setShowLaunchModal }) => {
+const CampaignCard = ({ campaign, openModal, generatePDF, setLaunchingCampaign, setShowLaunchModal, handleCompleteCampaign }) => {
     const isLaunched = campaign.status && campaign.status.toLowerCase() !== 'draft';
-    console.log('status:', campaign.status, 'isLaunched:', isLaunched);
+    const isActive = campaign.status && campaign.status.toLowerCase() === 'active';
+    const isCompleted = campaign.status && campaign.status.toLowerCase() === 'completed';
+    console.log('status:', campaign.status, 'isLaunched:', isLaunched, 'isActive:', isActive, 'isCompleted:', isCompleted);
     return (
         <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100" data-sessionid={campaign.userSessionID || ''}>
             {/* Header with greenish tinge if campaign is not draft */}
@@ -233,7 +235,40 @@ const CampaignCard = ({ campaign, openModal, generatePDF, setLaunchingCampaign, 
                     <div className="flex space-x-3">
                         <button onClick={() => { console.log('View Details clicked', campaign); openModal && openModal(campaign); }} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors"><i className="fas fa-eye mr-1"></i>View Details</button>
                         <button onClick={() => { console.log('Generate Report clicked', campaign); generatePDF && generatePDF(campaign); }} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"><i className="fas fa-file-pdf mr-2"></i>Generate Report</button>
-                        <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={() => { console.log('Launch clicked', campaign); setLaunchingCampaign && setLaunchingCampaign(campaign); setShowLaunchModal && setShowLaunchModal(true); }}><i className="fas fa-play mr-2"></i>Launch</button>
+
+                        {/* Show Launch button only for draft/planned campaigns */}
+                        {!isActive && !isCompleted && (
+                            <button
+                                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                                onClick={() => {
+                                    console.log('Launch clicked', campaign);
+                                    setLaunchingCampaign && setLaunchingCampaign(campaign);
+                                    setShowLaunchModal && setShowLaunchModal(true);
+                                }}
+                            >
+                                <i className="fas fa-play mr-2"></i>Launch
+                            </button>
+                        )}
+
+                        {/* Show Complete button for active campaigns */}
+                        {isActive && (
+                            <button
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                                onClick={() => {
+                                    console.log('Complete clicked', campaign);
+                                    handleCompleteCampaign && handleCompleteCampaign(campaign);
+                                }}
+                            >
+                                <i className="fas fa-check-circle mr-2"></i>Complete
+                            </button>
+                        )}
+
+                        {/* Completed campaigns show no action button */}
+                        {isCompleted && (
+                            <div className="text-green-600 font-semibold px-4 py-2 flex items-center">
+                                <i className="fas fa-check-circle mr-2"></i>Completed
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
