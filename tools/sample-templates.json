@@ -1,0 +1,102 @@
+[
+  {
+    "comment": "This is exactly what I needed! The automation features are game-changing for my small business.",
+    "reply": "So glad to hear it's helping! Let us know if you need any tips on getting started with automation.",
+    "sentiment": "positive"
+  },
+  {
+    "comment": "Finally, someone who understands the challenges of social media management! 🎉",
+    "reply": "Thank you! We built this specifically for busy entrepreneurs like you. Welcome aboard!",
+    "sentiment": "positive"
+  },
+  {
+    "comment": "How does this work with existing social media accounts?",
+    "reply": "Great question! You can connect any existing account through our integrations page. Takes about 2 minutes to set up!",
+    "sentiment": "question"
+  },
+  {
+    "comment": "What about the pricing? Is there a free trial?",
+    "reply": "Yes! We offer a 14-day free trial with full access to all features. No credit card required.",
+    "sentiment": "question"
+  },
+  {
+    "comment": "Does this integrate with Instagram Business accounts?",
+    "reply": "Absolutely! We support Instagram, Facebook, LinkedIn, and more. Check our integrations page for the full list.",
+    "sentiment": "question"
+  },
+  {
+    "comment": "This looks promising. Bookmarked for later!",
+    "reply": "Thanks for bookmarking! Feel free to reach out if you have any questions when you're ready.",
+    "sentiment": "neutral"
+  },
+  {
+    "comment": "Interesting approach to content scheduling.",
+    "reply": "Appreciate the feedback! We focused on making scheduling as intuitive as possible.",
+    "sentiment": "neutral"
+  },
+  {
+    "comment": "Thanks for sharing this. Will explore more.",
+    "reply": "You're welcome! Let us know what you think after trying it out.",
+    "sentiment": "neutral"
+  },
+  {
+    "comment": "Not sure this applies to my industry (healthcare). Any examples?",
+    "reply": "We have several healthcare clients! I can send you case studies. What specific concerns do you have?",
+    "sentiment": "negative"
+  },
+  {
+    "comment": "Seems complicated for non-tech people...",
+    "reply": "We hear you! That's why we designed it to be no-code. Our onboarding videos walk you through everything step-by-step.",
+    "sentiment": "negative"
+  },
+  {
+    "comment": "What about the ROI? How do I measure success?",
+    "reply": "Great question! Our analytics dashboard tracks engagement, reach, and conversions. You can see ROI in real-time.",
+    "sentiment": "question"
+  },
+  {
+    "comment": "Love the AI-powered caption generation! Saves so much time ⏰",
+    "reply": "That's one of our favorite features too! The AI learns your brand voice over time to make it even better.",
+    "sentiment": "positive"
+  },
+  {
+    "comment": "Can I schedule posts for multiple brands/clients?",
+    "reply": "Yes! Our Pro plan supports unlimited brands and clients. Perfect for agencies and freelancers.",
+    "sentiment": "question"
+  },
+  {
+    "comment": "This could be a game-changer for my agency clients!",
+    "reply": "Awesome! We have an agency plan with white-label options. Want to schedule a demo?",
+    "sentiment": "positive"
+  },
+  {
+    "comment": "How does the content calendar work?",
+    "reply": "It's drag-and-drop! You can visualize your entire campaign, move posts around, and see gaps at a glance.",
+    "sentiment": "question"
+  },
+  {
+    "comment": "Tried this and already seeing better engagement! 📈",
+    "reply": "That's fantastic! Would love to feature your success story if you're interested!",
+    "sentiment": "positive"
+  },
+  {
+    "comment": "Is customer support included?",
+    "reply": "Absolutely! We offer email support on all plans, and live chat on Pro plans. Average response time is under 2 hours.",
+    "sentiment": "question"
+  },
+  {
+    "comment": "What about data privacy and security?",
+    "reply": "Security is our top priority. We're SOC 2 compliant and all data is encrypted. Read more on our security page.",
+    "sentiment": "question"
+  },
+  {
+    "comment": "Can I export my analytics reports?",
+    "reply": "Yes! You can export to PDF or CSV, and even schedule automated weekly reports to your inbox.",
+    "sentiment": "question"
+  },
+  {
+    "comment": "This is revolutionizing how we manage social media! Thank you! 🙏",
+    "reply": "Thank you for the kind words! We're thrilled to be part of your success story!",
+    "sentiment": "positive"
+  }
+]
