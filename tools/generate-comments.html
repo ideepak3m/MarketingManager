@@ -213,24 +213,37 @@
         </div>
 
         <div class="section">
-            <div class="section-title">Comment Templates (JSON)</div>
-            <label for="templates">Paste your AI-generated comment/reply templates below</label>
-            <textarea id="templates" placeholder='[
-  {
-    "comment": "This is exactly what I needed! The automation features are game-changing.",
-    "reply": "So glad to hear it\' s helping! Let us know if you need any tips on getting started.", "sentiment"
-                : "positive" }, { "comment" : "How does this work with existing social media accounts?" , "reply"
-                : "Great question! You can connect any existing account through our integrations page. Takes about 2 minutes!"
-                , "sentiment" : "question" } ]'></textarea>
+            <div class="section-title">Comment Templates by Phase (JSON)</div>
+            <label for="templates">Paste your AI-generated phase-specific templates below</label>
+            <textarea id="templates" placeholder='{
+  "Awareness": [
+    {"comment": "First time seeing this! Looks interesting.", "reply": "Welcome! Let us know if you have any questions.", "sentiment": "positive"}
+  ],
+  "Consideration": [
+    {"comment": "How does this compare to other solutions?", "reply": "Great question! Here are the key differences...", "sentiment": "question"}
+  ],
+  "Conversion": [
+    {"comment": "Just signed up! Excited to get started.", "reply": "Awesome! Check your email for onboarding steps.", "sentiment": "positive"}
+  ]
+}'></textarea>
 
             <div class="example">
                 <div class="example-title">📋 Template Format:</div>
-                Each object should have:
+                Organize templates by phase name (must match your campaign phases exactly):
                 <ul style="margin-left: 20px; margin-top: 10px;">
-                    <li><code>comment</code> - The comment text</li>
-                    <li><code>reply</code> - The reply text</li>
-                    <li><code>sentiment</code> - positive, question, neutral, or negative</li>
+                    <li><code>phase_name</code> - Array of comment/reply objects for that phase</li>
+                    <li>Each comment object should have:
+                        <ul style="margin-left: 20px;">
+                            <li><code>comment</code> - The comment text</li>
+                            <li><code>reply</code> - The reply text</li>
+                            <li><code>sentiment</code> - positive, question, neutral, or negative</li>
+                        </ul>
+                    </li>
                 </ul>
+                <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px; color: #856404;">
+                    💡 <strong>Tip:</strong> Ask AI to generate templates based on your campaign phases. Comments will
+                    be timestamped within each phase's date range for realistic data.
+                </div>
             </div>
         </div>
 
@@ -278,10 +291,18 @@
             if (message) log(message, 'info');
         }
 
-        function generateRandomDate(postScheduledTime) {
-            const postDate = new Date(postScheduledTime);
-            const hoursAfterPost = Math.floor(Math.random() * 72); // Within 3 days
-            return new Date(postDate.getTime() + hoursAfterPost * 60 * 60 * 1000).toISOString();
+        function generateRandomDateInPhase(phaseStartDate, phaseEndDate, isReply = false) {
+            const startTime = new Date(phaseStartDate).getTime();
+            const endTime = new Date(phaseEndDate).getTime();
+            const randomTime = startTime + Math.random() * (endTime - startTime);
+
+            // If it's a reply, add a small delay (1-24 hours after the comment would have been posted)
+            if (isReply) {
+                const replyDelay = Math.random() * 24 * 60 * 60 * 1000; // 1-24 hours
+                return new Date(Math.min(randomTime + replyDelay, endTime)).toISOString();
+            }
+
+            return new Date(randomTime).toISOString();
         }
 
         function generateRandomLikes() {
@@ -305,11 +326,17 @@
             let templates;
             try {
                 templates = JSON.parse(templatesText);
-                if (!Array.isArray(templates) || templates.length === 0) {
-                    throw new Error('Templates must be a non-empty array');
+                if (typeof templates !== 'object' || Object.keys(templates).length === 0) {
+                    throw new Error('Templates must be an object with phase names as keys');
+                }
+                // Validate that each phase has an array of templates
+                for (const [phaseName, phaseTemplates] of Object.entries(templates)) {
+                    if (!Array.isArray(phaseTemplates) || phaseTemplates.length === 0) {
+                        throw new Error(`Phase "${phaseName}" must have a non-empty array of templates`);
+                    }
                 }
             } catch (e) {
-                alert('Invalid JSON format for templates. Please check the format.');
+                alert(`Invalid JSON format for templates: ${e.message}`);
                 return;
             }
 
@@ -322,8 +349,8 @@
             log('🚀 Starting comment generation...', 'success');
 
             try {
-                // Fetch all campaign_post_platforms
-                log('📊 Fetching campaign posts...', 'info');
+                // Fetch all campaign_post_platforms with phase information
+                log('📊 Fetching campaign posts with phase data...', 'info');
                 const { data: platforms, error: platformsError } = await supabase
                     .from('campaign_post_platforms')
                     .select(`
@@ -331,7 +358,13 @@
                         post:campaign_posts(
                             id,
                             scheduled_time,
-                            campaign_id
+                            campaign_phase_id,
+                            phase:campaign_phases(
+                                id,
+                                name,
+                                start_date,
+                                end_date
+                            )
                         )
                     `)
                     .not('post', 'is', null);
@@ -340,20 +373,46 @@
 
                 log(`✅ Found ${platforms.length} platform posts`, 'success');
 
+                // Group by phase for logging
+                const phaseGroups = {};
+                platforms.forEach(p => {
+                    const phaseName = p.post?.phase?.name || 'Unknown';
+                    phaseGroups[phaseName] = (phaseGroups[phaseName] || 0) + 1;
+                });
+                Object.entries(phaseGroups).forEach(([phase, count]) => {
+                    log(`  📍 ${phase}: ${count} posts`, 'info');
+                });
+
                 let totalComments = 0;
                 let totalReplies = 0;
-                const batchSize = 10; // Insert in batches
+                let skippedPosts = 0;
 
                 for (let i = 0; i < platforms.length; i++) {
                     const platform = platforms[i];
+                    const phaseName = platform.post?.phase?.name;
+                    const phaseStartDate = platform.post?.phase?.start_date;
+                    const phaseEndDate = platform.post?.phase?.end_date;
+
+                    // Check if we have templates for this phase
+                    if (!phaseName || !templates[phaseName]) {
+                        log(`⚠️ No templates found for phase "${phaseName}", skipping post ${i + 1}`, 'warning');
+                        skippedPosts++;
+                        continue;
+                    }
+
+                    const phaseTemplates = templates[phaseName];
                     const numComments = Math.floor(Math.random() * (maxComments - minComments + 1)) + minComments;
 
                     const commentsToInsert = [];
 
                     for (let j = 0; j < numComments; j++) {
-                        // Pick random template
-                        const template = templates[Math.floor(Math.random() * templates.length)];
+                        // Pick random template from this phase's templates
+                        const template = phaseTemplates[Math.floor(Math.random() * phaseTemplates.length)];
                         const shouldReply = Math.random() * 100 < replyRate;
+
+                        // Generate comment timestamp within phase date range
+                        const commentTimestamp = generateRandomDateInPhase(phaseStartDate, phaseEndDate);
+                        const replyTimestamp = shouldReply ? generateRandomDateInPhase(phaseStartDate, phaseEndDate, true) : null;
 
                         const comment = {
                             comment_id: `${platform.platform}_${platform.id}_${Date.now()}_${j}`,
@@ -361,14 +420,13 @@
                             platform: platform.platform,
                             username: `user_${Math.floor(Math.random() * 1000)}`,
                             text: template.comment,
-                            timestamp: generateRandomDate(platform.post.scheduled_time),
+                            timestamp: commentTimestamp,
                             like_count: generateRandomLikes(),
                             is_spam: false,
                             replied: shouldReply,
                             reply_text: shouldReply ? template.reply : null,
-                            replied_at: shouldReply ? generateRandomDate(platform.post.scheduled_time) : null,
-                            campaign_post_platform_id: platform.id,
-                            campaign_id: platform.post.campaign_id
+                            replied_at: replyTimestamp,
+                            campaign_post_platform_id: platform.id
                         };
 
                         commentsToInsert.push(comment);
@@ -394,6 +452,9 @@
                 log(`📊 Total comments: ${totalComments}`, 'success');
                 log(`💬 Total replies: ${totalReplies}`, 'success');
                 log(`📈 Reply rate: ${Math.round((totalReplies / totalComments) * 100)}%`, 'success');
+                if (skippedPosts > 0) {
+                    log(`⚠️ Skipped ${skippedPosts} posts (no matching phase templates)`, 'warning');
+                }
 
             } catch (error) {
                 log(`❌ Error: ${error.message}`, 'error');

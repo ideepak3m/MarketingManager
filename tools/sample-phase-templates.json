@@ -1,0 +1,93 @@
+{
+    "Awareness": [
+        {
+            "comment": "First time seeing this! What exactly does this platform do?",
+            "reply": "Welcome! We help businesses automate their marketing campaigns across social media. Check out our intro video!",
+            "sentiment": "question"
+        },
+        {
+            "comment": "Interesting concept. How is this different from other marketing tools?",
+            "reply": "Great question! We focus on AI-driven content generation and multi-platform scheduling in one place.",
+            "sentiment": "question"
+        },
+        {
+            "comment": "This looks promising! Adding to my watchlist.",
+            "reply": "Awesome! Feel free to reach out if you have any questions.",
+            "sentiment": "positive"
+        },
+        {
+            "comment": "Never heard of this before but the features look solid.",
+            "reply": "Thanks! We're excited to help businesses streamline their marketing efforts.",
+            "sentiment": "neutral"
+        },
+        {
+            "comment": "Who is this designed for? Small businesses or enterprises?",
+            "reply": "We cater to both! Our plans scale from solo entrepreneurs to large teams.",
+            "sentiment": "question"
+        }
+    ],
+    "Consideration": [
+        {
+            "comment": "How does the AI content generation actually work?",
+            "reply": "Our AI analyzes your campaign goals and generates platform-specific content with captions and hashtags. You can edit everything before posting!",
+            "sentiment": "question"
+        },
+        {
+            "comment": "Do you integrate with existing social media accounts?",
+            "reply": "Yes! We connect with Facebook, Instagram, LinkedIn, TikTok, Pinterest, and more. Takes about 2 minutes to set up.",
+            "sentiment": "question"
+        },
+        {
+            "comment": "What's the pricing like? Can't find it on your site.",
+            "reply": "We offer plans starting at $29/month for individuals, up to custom enterprise solutions. DM us for detailed pricing!",
+            "sentiment": "question"
+        },
+        {
+            "comment": "This could save us so much time compared to manual posting.",
+            "reply": "That's exactly what we built it for! Most users report saving 10+ hours per week.",
+            "sentiment": "positive"
+        },
+        {
+            "comment": "I'm comparing this with Buffer and Hootsuite. What makes you different?",
+            "reply": "Unlike traditional schedulers, we use AI to generate content, not just schedule it. Plus our analytics are campaign-focused.",
+            "sentiment": "question"
+        },
+        {
+            "comment": "Is there a free trial available?",
+            "reply": "Yes! We offer a 14-day free trial with full access to all features. No credit card required.",
+            "sentiment": "question"
+        }
+    ],
+    "Conversion": [
+        {
+            "comment": "Just signed up! The onboarding was super smooth.",
+            "reply": "Welcome aboard! Check your email for next steps. Let us know if you need help getting started!",
+            "sentiment": "positive"
+        },
+        {
+            "comment": "Finally pulled the trigger. Can't wait to try the AI features!",
+            "reply": "Exciting! The AI campaign planner is a great place to start. Happy to help if you get stuck!",
+            "sentiment": "positive"
+        },
+        {
+            "comment": "Set up my first campaign today. This is way easier than I expected!",
+            "reply": "That's what we love to hear! Tag us when you launch - we'd love to see what you create!",
+            "sentiment": "positive"
+        },
+        {
+            "comment": "The free trial convinced me. Just upgraded to Pro!",
+            "reply": "Awesome! You now have access to advanced analytics and unlimited campaigns. Enjoy!",
+            "sentiment": "positive"
+        },
+        {
+            "comment": "Quick question - how do I connect my Instagram business account?",
+            "reply": "Go to Settings > Integrations > Instagram > Connect. Make sure you're logged into your business account. Let us know if you hit any snags!",
+            "sentiment": "question"
+        },
+        {
+            "comment": "This is exactly what my agency needed. Already recommending to colleagues!",
+            "reply": "Thank you so much! We have a referral program if you're interested - you both get 20% off!",
+            "sentiment": "positive"
+        }
+    ]
+}
