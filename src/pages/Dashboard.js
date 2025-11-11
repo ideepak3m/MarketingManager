@@ -23,48 +23,98 @@ const Dashboard = () => {
         try {
             setLoading(true);
 
-            // Fetch user's campaigns
-            const { data: sessions } = await supabase
-                .from('nova_user_sessions')
-                .select('session_id')
-                .eq('user_id', user.id);
+            // Check if user is admin
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single();
 
-            if (!sessions || sessions.length === 0) {
-                setLoading(false);
-                return;
-            }
+            const isAdmin = profile?.role === 'admin';
+            console.log('Dashboard - Is admin:', isAdmin);
 
-            const sessionIds = sessions.map(s => s.session_id);
+            let campaigns;
 
-            // Fetch campaigns with phases
-            const { data: campaigns } = await supabase
-                .from('campaigns')
-                .select(`
-                    id,
-                    name,
-                    status,
-                    start_date,
-                    end_date,
-                    campaign_phases (
+            if (isAdmin) {
+                // Admin: Fetch all campaigns
+                console.log('Admin user - fetching all campaigns');
+                const { data } = await supabase
+                    .from('campaigns')
+                    .select(`
                         id,
                         name,
-                        phase_order,
-                        campaign_posts (
+                        status,
+                        start_date,
+                        end_date,
+                        campaign_phases (
                             id,
-                            campaign_post_platforms (
+                            name,
+                            phase_order,
+                            campaign_posts (
                                 id,
-                                platform,
-                                likes_count,
-                                comments_count,
-                                shares_count,
-                                reach,
-                                impressions
+                                campaign_post_platforms (
+                                    id,
+                                    platform,
+                                    likes_count,
+                                    comments_count,
+                                    shares_count,
+                                    reach,
+                                    impressions
+                                )
                             )
                         )
-                    )
-                `)
-                .in('session_id', sessionIds)
-                .order('created_at', { ascending: false });
+                    `)
+                    .order('created_at', { ascending: false });
+                
+                campaigns = data;
+            } else {
+                // Regular user: Fetch campaigns by session
+                const { data: sessions } = await supabase
+                    .from('nova_user_sessions')
+                    .select('session_id')
+                    .eq('user_id', user.id);
+
+                if (!sessions || sessions.length === 0) {
+                    console.log('No sessions found for this user');
+                    setLoading(false);
+                    return;
+                }
+
+                const sessionIds = sessions.map(s => s.session_id);
+
+                const { data } = await supabase
+                    .from('campaigns')
+                    .select(`
+                        id,
+                        name,
+                        status,
+                        start_date,
+                        end_date,
+                        campaign_phases (
+                            id,
+                            name,
+                            phase_order,
+                            campaign_posts (
+                                id,
+                                campaign_post_platforms (
+                                    id,
+                                    platform,
+                                    likes_count,
+                                    comments_count,
+                                    shares_count,
+                                    reach,
+                                    impressions
+                                )
+                            )
+                        )
+                    `)
+                    .in('session_id', sessionIds)
+                    .order('created_at', { ascending: false });
+
+                campaigns = data;
+            }
+
+            console.log('Dashboard - Campaigns fetched:', campaigns?.length);
 
             // Calculate social metrics by platform
             const metricsMap = {};
