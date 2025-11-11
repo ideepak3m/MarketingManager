@@ -2,7 +2,7 @@
     "name": "social-media-marketing-manager",
     "version": "1.0.0",
     "description": "Social Media Marketing Manager with AI-powered campaign management",
-    "homepage": "https://ideepak3m.github.io/MarketingManager",
+    "homepage": "https://marketing.priorityonetech.ca",
     "private": true,
     "dependencies": {
         "@supabase/supabase-js": "^2.75.0",
