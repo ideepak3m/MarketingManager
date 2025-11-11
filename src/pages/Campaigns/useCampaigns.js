@@ -14,29 +14,63 @@ const useCampaigns = () => {
         try {
             setLoading(true);
             setError(null);
-            // Get all session_ids for the logged-in user from nova_user_sessions
-            const { data: sessionRows, error: sessionError } = await supabase
-                .from('nova_user_sessions')
-                .select('session_id')
-                .eq('user_email', user.email);
 
-            if (sessionError) {
-                throw sessionError;
+            // Check if user is admin - fetch with better error handling
+            let isAdmin = false;
+            try {
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', user.id)
+                    .single();
+
+                console.log('Profile query result:', profile, profileError);
+                isAdmin = profile?.role === 'admin';
+            } catch (profileErr) {
+                console.error('Error fetching profile:', profileErr);
+                // Continue as regular user if profile fetch fails
             }
 
-            const sessionIds = sessionRows ? sessionRows.map(row => row.session_id.trim()) : [];
-            if (!sessionIds.length) {
-                setCampaigns([]);
-                setLoading(false);
-                return;
-            }
+            let campaignRows;
+            console.log('Fetching campaigns for user:', user.id, 'isAdmin:', isAdmin);
+            if (isAdmin) {
+                // Admin sees ALL campaigns
+                const { data, error: campaignError } = await supabase
+                    .from('campaigns')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                console.log('Admin campaign fetch result:', data, campaignError);
+                if (campaignError) throw campaignError;
+                campaignRows = data;
+                console.log('Admin fetched campaigns:', campaignRows);
+            } else {
+                // Regular users see only their campaigns
+                // Get all session_ids for the logged-in user from nova_user_sessions
+                const { data: sessionRows, error: sessionError } = await supabase
+                    .from('nova_user_sessions')
+                    .select('session_id')
+                    .eq('user_id', user.id);
 
-            // Fetch campaigns for these session IDs
-            const { data: campaignRows, error: campaignError } = await supabase
-                .from('campaigns')
-                .select('*')
-                .in('user_id', sessionIds);
-            if (campaignError) throw campaignError;
+                if (sessionError) {
+                    throw sessionError;
+                }
+
+                const sessionIds = sessionRows ? sessionRows.map(row => row.session_id.trim()) : [];
+                if (!sessionIds.length) {
+                    setCampaigns([]);
+                    setLoading(false);
+                    return;
+                }
+
+                // Fetch campaigns for these session IDs
+                const { data, error: campaignError } = await supabase
+                    .from('campaigns')
+                    .select('*')
+                    .in('session_id', sessionIds);
+
+                if (campaignError) throw campaignError;
+                campaignRows = data;
+            }
 
             // Fetch all campaign_phases for these campaigns
             const campaignIds = (campaignRows || []).map(c => c.id);

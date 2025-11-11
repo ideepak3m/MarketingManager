@@ -16,13 +16,13 @@ export const getCampaignPosts = async (userId, campaignId, platform = null) => {
         console.log('getCampaignPosts called with:', { userId, campaignId, platform });
 
         // Query campaign_posts with nested platform details
+        // Note: RLS handles user access control, so we only filter by campaign_id
         let query = supabase
             .from(TABLES.CAMPAIGN_POSTS)
             .select(`
                 *,
                 platforms:campaign_post_platforms(*)
             `)
-            .eq('user_id', userId)
             .eq('campaign_id', campaignId)
             .order('scheduled_time', { ascending: true });
 
@@ -62,13 +62,13 @@ export const getCampaignPosts = async (userId, campaignId, platform = null) => {
  */
 export const getCampaignPostsByPhase = async (userId, campaignPhaseId, platform = null) => {
     try {
+        // RLS handles user access control, so we only filter by campaign_phase_id
         let query = supabase
             .from(TABLES.CAMPAIGN_POSTS)
             .select(`
                 *,
                 platforms:campaign_post_platforms(*)
             `)
-            .eq('user_id', userId)
             .eq('campaign_phase_id', campaignPhaseId)
             .order('scheduled_time', { ascending: true });
 

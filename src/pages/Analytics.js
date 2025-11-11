@@ -45,31 +45,58 @@ const Analytics = () => {
         try {
             console.log('Fetching campaigns for user:', user.id);
 
-            // First, get all sessions for this user
-            const { data: sessions, error: sessionsError } = await supabase
-                .from('nova_user_sessions')
-                .select('session_id')
-                .eq('user_id', user.id);
+            // Check if user is admin
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single();
 
-            if (sessionsError) throw sessionsError;
+            const isAdmin = profile?.role === 'admin';
+            console.log('Is admin:', isAdmin);
 
-            console.log('User sessions:', sessions);
+            let data;
+            let error;
 
-            if (!sessions || sessions.length === 0) {
-                console.log('No sessions found for this user');
-                setLoading(false);
-                return;
+            if (isAdmin) {
+                // Admin: Fetch all campaigns
+                console.log('Admin user - fetching all campaigns');
+                const result = await supabase
+                    .from('campaigns')
+                    .select('id, name, status, start_date, end_date, session_id')
+                    .order('created_at', { ascending: false });
+
+                data = result.data;
+                error = result.error;
+            } else {
+                // Regular user: Fetch campaigns by session
+                const { data: sessions, error: sessionsError } = await supabase
+                    .from('nova_user_sessions')
+                    .select('session_id')
+                    .eq('user_id', user.id);
+
+                if (sessionsError) throw sessionsError;
+
+                console.log('User sessions:', sessions);
+
+                if (!sessions || sessions.length === 0) {
+                    console.log('No sessions found for this user');
+                    setLoading(false);
+                    return;
+                }
+
+                const sessionIds = sessions.map(s => s.session_id);
+                console.log('Session IDs:', sessionIds);
+
+                const result = await supabase
+                    .from('campaigns')
+                    .select('id, name, status, start_date, end_date, session_id')
+                    .in('session_id', sessionIds)
+                    .order('created_at', { ascending: false });
+
+                data = result.data;
+                error = result.error;
             }
-
-            const sessionIds = sessions.map(s => s.session_id);
-            console.log('Session IDs:', sessionIds);
-
-            // Now get campaigns for these sessions
-            const { data, error } = await supabase
-                .from('campaigns')
-                .select('id, name, status, start_date, end_date, session_id')
-                .in('session_id', sessionIds)
-                .order('created_at', { ascending: false });
 
             if (error) throw error;
 
